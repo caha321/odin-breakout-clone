@@ -5,7 +5,14 @@ import rl "vendor:raylib"
 
 
 ui_draw :: proc() {
-	score_text := fmt.ctprintf("SCORE: %4d  SPEED: %4d", g.score, int(g.ball_speed)) // c=c string, t=temporary
+	// c=c string, t=temporary
+	score_text := fmt.ctprintf(
+		"SCORE: %4d  #BALLS: %2d  #BLOCKS: %3d",
+		g.score,
+		//int(g.ball_speed),
+		g.remaining_balls,
+		g.remaining_blocks,
+	)
 	rl.DrawText(score_text, 10, 10, 40, rl.WHITE)
 
 	switch g.state {

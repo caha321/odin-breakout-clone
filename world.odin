@@ -10,6 +10,7 @@ create_bounds :: proc() {
 	wall_shape_def := b2.DefaultShapeDef()
 
 	ground_def := wall_def
+	ground_def.name = "ground"
 	ground_shape_def := wall_shape_def
 	ground_shape_def.isSensor = true
 	ground_shape_def.enableSensorEvents = true // shapes that we want to detect also need this set to true
@@ -22,6 +23,7 @@ create_bounds :: proc() {
 
 	// Ceiling
 	ceiling_def := wall_def
+	ceiling_def.name = "ceiling"
 	ceiling_def.position = {0, WORLD_SCREEN_HALF_HEIGHT}
 	ceiling_id := b2.CreateBody(g.world_id, ceiling_def)
 	ceiling_box := b2.MakeBox(WORLD_SCREEN_HALF_WIDTH, 0.5)
@@ -30,6 +32,7 @@ create_bounds :: proc() {
 
 	// Left wall
 	left_def := wall_def
+	left_def.name = "wall left"
 	left_def.position = {-WORLD_SCREEN_HALF_WIDTH, 0}
 	left_id := b2.CreateBody(g.world_id, left_def)
 	left_box := b2.MakeBox(0.5, WORLD_SCREEN_HALF_HEIGHT)
@@ -38,6 +41,7 @@ create_bounds :: proc() {
 
 	// Right wall
 	right_def := wall_def
+	right_def.name = "wall right"
 	right_def.position = {WORLD_SCREEN_HALF_WIDTH, 0}
 	right_id := b2.CreateBody(g.world_id, right_def)
 	right_box := b2.MakeBox(0.5, WORLD_SCREEN_HALF_HEIGHT)
@@ -53,7 +57,9 @@ World_Create :: proc() {
 
 	create_bounds()
 	Paddle_Create()
-	Ball_Create()
+	Ball_Create({-5, 0})
+	Ball_Create({0, 0})
+	Ball_Create({5, 0})
 	blocks_create()
 }
 

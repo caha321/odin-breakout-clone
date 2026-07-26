@@ -6,6 +6,7 @@ import b2 "vendor:box2d"
 
 // Extra data not shared by all entities. Size will be maximum size of each
 Entity_Extra :: union {
+	Entity_Extra_Ball,
 	Entity_Extra_Paddle,
 	Entity_Extra_Block,
 }
@@ -24,7 +25,12 @@ Entity :: struct {
 
 Entity_Destroy :: proc(entity: ^Entity) {
 	if b2.Body_IsValid(entity.body_id) {
-		log.debug("Destroying Box2D body", entity.body_id)
+		log.debug(
+			"Destroying Box2D body... name:",
+			b2.Body_GetName(entity.body_id),
+			"; id:",
+			entity.body_id,
+		)
 		b2.DestroyBody(entity.body_id)
 	}
 }

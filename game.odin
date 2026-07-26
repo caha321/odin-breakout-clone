@@ -15,9 +15,12 @@ Game_State :: enum {
 Game :: struct {
 	state:            Game_State,
 	score:            int,
+	lives:            int, // TODO
 	textures:         [Texture]rl.Texture2D,
 	sounds:           [Sound]rl.Sound,
 	entities:         [dynamic]Entity,
+	remaining_balls:  int,
+	remaining_blocks: int,
 	ball_speed:       f32,
 	// physics stuff
 	world_id:         b2.WorldId,
@@ -43,6 +46,8 @@ game_restart :: proc() {
 	g.score = 0
 	g.ball_speed = BALL_SPEED_INITIAL
 	game_clear_entities()
+	g.remaining_balls = 0
+	g.remaining_blocks = 0
 
 	World_Create()
 }
@@ -142,6 +147,37 @@ Game_Update :: proc() {
 	}
 }
 
+check_contact_events :: proc(world_id: b2.WorldId) {
+	events := b2.World_GetContactEvents(world_id)
+
+	for i in 0 ..< events.hitCount {
+		hit := events.hitEvents[i]
+
+		entity_a := get_entity(b2.Shape_GetUserData(hit.shapeIdA))
+		if entity_a != nil && entity_a.hit != nil do entity_a.hit(entity_a, hit)
+
+		entity_b := get_entity(b2.Shape_GetUserData(hit.shapeIdB))
+		if entity_b != nil && entity_b.hit != nil do entity_b.hit(entity_b, hit)
+	}
+}
+
+check_sensor_events :: proc(world_id: b2.WorldId) {
+	events := b2.World_GetSensorEvents(world_id)
+	for i in 0 ..< events.beginCount {
+		event := events.beginEvents[i]
+
+		entity := get_entity(b2.Shape_GetUserData(event.visitorShapeId))
+		if entity != nil {
+			g.remaining_balls -= 1
+			Entity_Destroy(entity)
+		}
+	}
+
+	if g.remaining_balls <= 0 {
+		game_update_state(.GameOver)
+	}
+}
+
 Game_Loop :: proc() {
 	debug_draw := init_debug_draw()
 
@@ -172,6 +208,15 @@ Game_AddEntity :: proc(entity: Entity) {
 
 	entity_id := entity_index_to_userdata(len(g.entities))
 	b2.Shape_SetUserData(entity.shape_id, entity_id)
+
+	// inventory
+
+	#partial switch extra in entity.extra {
+	case Entity_Extra_Ball:
+		g.remaining_balls += 1
+	case Entity_Extra_Block:
+		g.remaining_blocks += 1
+	}
 
 	append(&g.entities, entity)
 }

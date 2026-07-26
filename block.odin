@@ -42,6 +42,7 @@ blocks_create :: proc() {
 
 Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
 	body_def := b2.DefaultBodyDef()
+	body_def.name = "block"
 	body_def.type = .staticBody
 	body_def.position = position
 	body_id := b2.CreateBody(g.world_id, body_def)
@@ -106,5 +107,6 @@ Block_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
 	if extra.health <= 0 {
 		g.score += int(extra.score_destroy)
 		Entity_Destroy(entity)
+		g.remaining_blocks -= 1
 	}
 }
