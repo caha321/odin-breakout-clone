@@ -74,7 +74,7 @@ play_hit_sound :: proc(sound: Sound, hit: b2.ContactHitEvent) {
 	rl_sound := g.sounds[sound]
 	if rl.IsSoundValid(rl_sound) {
 		volume := clamp(hit.approachSpeed / 15.0, 0.2, 1.0)
-		pan := clamp(hit.point.x / WORLD_SCREEN_HALF_WIDTH, -1, 1)
+		pan := clamp(hit.point.x / ARENA_HALF_WIDTH, -1, 1)
 
 		rl.SetSoundPan(rl_sound, pan)
 		rl.SetSoundVolume(rl_sound, volume)

@@ -104,6 +104,7 @@ Block_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
 	extra := &entity.extra.(Entity_Extra_Block) // mutate
 	extra.health -= 1
 	g.score += int(extra.score_hit)
+	g.ball_speed += 0.5
 	if extra.health <= 0 {
 		g.score += int(extra.score_destroy)
 		Entity_Destroy(entity)

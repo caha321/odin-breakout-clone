@@ -5,7 +5,7 @@ import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 
-init_debug_draw :: proc() -> b2.DebugDraw {
+init_debug_draw :: proc "contextless" () -> b2.DebugDraw {
 	// ---- Assemble the DebugDraw struct ----
 	debug_draw := b2.DefaultDebugDraw()
 	debug_draw.DrawPolygonFcn = draw_polygon

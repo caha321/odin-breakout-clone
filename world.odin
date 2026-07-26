@@ -5,6 +5,24 @@ import rl "vendor:raylib"
 
 BACKGROUND_COLOR :: rl.Color{150, 190, 220, 255}
 
+SCREEN_HEIGHT :: 1280
+SCREEN_WIDTH :: 1920
+PPM :: 20
+
+
+world_to_screen :: proc "c" (p: [2]f32) -> [2]f32 {
+	return {f32(SCREEN_WIDTH) / 2 + p.x * PPM, f32(SCREEN_HEIGHT) / 2 - p.y * PPM}
+}
+
+screen_to_world :: proc "c" (p: [2]f32) -> [2]f32 {
+	return {(p.x - f32(SCREEN_WIDTH) / 2) / PPM, (f32(SCREEN_HEIGHT) / 2 - p.y) / PPM}
+}
+
+
+ARENA_HALF_WIDTH :: 32
+ARENA_HALF_HEIGHT :: 32
+WALL_THICKNESS :: 0.5
+
 create_bounds :: proc() {
 	wall_def := b2.DefaultBodyDef()
 	wall_shape_def := b2.DefaultShapeDef()
@@ -14,9 +32,9 @@ create_bounds :: proc() {
 	ground_shape_def := wall_shape_def
 	ground_shape_def.isSensor = true
 	ground_shape_def.enableSensorEvents = true // shapes that we want to detect also need this set to true
-	ground_def.position = {0, -WORLD_SCREEN_HALF_WIDTH}
+	ground_def.position = {0, -ARENA_HALF_WIDTH}
 	ground_id := b2.CreateBody(g.world_id, ground_def)
-	ground_box := b2.MakeBox(WORLD_SCREEN_HALF_WIDTH, 0.5)
+	ground_box := b2.MakeBox(ARENA_HALF_WIDTH, WALL_THICKNESS)
 	ground_shape_id := b2.CreatePolygonShape(ground_id, ground_shape_def, &ground_box)
 	Game_AddEntity({body_id = ground_id, shape_id = ground_shape_id})
 
@@ -24,27 +42,27 @@ create_bounds :: proc() {
 	// Ceiling
 	ceiling_def := wall_def
 	ceiling_def.name = "ceiling"
-	ceiling_def.position = {0, WORLD_SCREEN_HALF_HEIGHT}
+	ceiling_def.position = {0, ARENA_HALF_HEIGHT}
 	ceiling_id := b2.CreateBody(g.world_id, ceiling_def)
-	ceiling_box := b2.MakeBox(WORLD_SCREEN_HALF_WIDTH, 0.5)
+	ceiling_box := b2.MakeBox(ARENA_HALF_WIDTH, WALL_THICKNESS)
 	ceiling_shape_id := b2.CreatePolygonShape(ceiling_id, wall_shape_def, &ceiling_box)
 	Game_AddEntity({body_id = ceiling_id, shape_id = ceiling_shape_id, hit = Wall_Hit})
 
 	// Left wall
 	left_def := wall_def
 	left_def.name = "wall left"
-	left_def.position = {-WORLD_SCREEN_HALF_WIDTH, 0}
+	left_def.position = {-ARENA_HALF_WIDTH, 0}
 	left_id := b2.CreateBody(g.world_id, left_def)
-	left_box := b2.MakeBox(0.5, WORLD_SCREEN_HALF_HEIGHT)
+	left_box := b2.MakeBox(WALL_THICKNESS, ARENA_HALF_HEIGHT)
 	left_shape_id := b2.CreatePolygonShape(left_id, wall_shape_def, &left_box)
 	Game_AddEntity({body_id = left_id, shape_id = left_shape_id, hit = Wall_Hit})
 
 	// Right wall
 	right_def := wall_def
 	right_def.name = "wall right"
-	right_def.position = {WORLD_SCREEN_HALF_WIDTH, 0}
+	right_def.position = {ARENA_HALF_WIDTH, 0}
 	right_id := b2.CreateBody(g.world_id, right_def)
-	right_box := b2.MakeBox(0.5, WORLD_SCREEN_HALF_HEIGHT)
+	right_box := b2.MakeBox(WALL_THICKNESS, ARENA_HALF_HEIGHT)
 	right_shape_id := b2.CreatePolygonShape(right_id, wall_shape_def, &right_box)
 	Game_AddEntity({body_id = right_id, shape_id = right_shape_id, hit = Wall_Hit})
 }

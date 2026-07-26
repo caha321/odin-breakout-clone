@@ -4,16 +4,45 @@ import "core:fmt"
 import rl "vendor:raylib"
 
 
+BORDER_WIDTH :: (ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * PPM / 2
+BORDER_COLOR :: rl.BLACK
+
+BORDER_RIGHT_TEXT_X :: BORDER_WIDTH + (ARENA_HALF_WIDTH * 2 * PPM)
+
+
 ui_draw :: proc() {
-	// c=c string, t=temporary
-	score_text := fmt.ctprintf(
-		"SCORE: %4d  #BALLS: %2d  #BLOCKS: %3d",
-		g.score,
-		//int(g.ball_speed),
-		g.remaining_balls,
-		g.remaining_blocks,
+	// borders
+	rl.DrawRectangle(0, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Left
+	rl.DrawRectangle(SCREEN_WIDTH - BORDER_WIDTH, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Right
+
+	rl.DrawText(
+		fmt.ctprintf(
+			"SCORE: %5d\nLIVES: %2d\n\nB.SPEED: %3d\n\nR.BALLS: %2d\nR.BLOCKS: %3d",
+			g.score,
+			g.lives,
+			int(g.ball_speed),
+			g.remaining_balls,
+			g.remaining_blocks,
+		),
+		10,
+		10,
+		40,
+		rl.WHITE,
 	)
-	rl.DrawText(score_text, 10, 10, 40, rl.WHITE)
+
+
+	rl.DrawText(
+		fmt.ctprintf(
+			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms",
+			rl.GetFPS(),
+			g.update_time_ms,
+			g.render_time_ms,
+		),
+		BORDER_RIGHT_TEXT_X,
+		10,
+		20,
+		rl.WHITE,
+	)
 
 	switch g.state {
 	case .New:

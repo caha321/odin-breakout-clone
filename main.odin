@@ -5,7 +5,7 @@ import "core:os"
 import rl "vendor:raylib"
 
 DT :: 1.0 / 60.0
-SUB_STEP_COUNT :: 8 // Box2D
+SUB_STEP_COUNT :: 4 // Box2D
 
 run :: proc() -> bool {
 	rl.SetTraceLogLevel(.ERROR)

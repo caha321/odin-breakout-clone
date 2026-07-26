@@ -1,6 +1,7 @@
 package breakout
 
 import "core:log"
+import "core:time"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
@@ -26,6 +27,9 @@ Game :: struct {
 	world_id:         b2.WorldId,
 	draw_b2_debug:    bool,
 	accumulated_time: f32,
+	// perf stats
+	update_time_ms:   f64,
+	render_time_ms:   f64,
 }
 
 g: ^Game
@@ -129,6 +133,8 @@ Game_Handle_Input :: proc() {
 }
 
 Game_Update :: proc() {
+	Game_Handle_Input()
+
 	if g.state == .Running {
 		g.accumulated_time += rl.GetFrameTime()
 	}
@@ -140,15 +146,15 @@ Game_Update :: proc() {
 
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
 
-		check_sensor_events(g.world_id)
-		check_contact_events(g.world_id)
+		check_sensor_events()
+		check_contact_events()
 
 		g.accumulated_time -= DT
 	}
 }
 
-check_contact_events :: proc(world_id: b2.WorldId) {
-	events := b2.World_GetContactEvents(world_id)
+check_contact_events :: proc() {
+	events := b2.World_GetContactEvents(g.world_id)
 
 	for i in 0 ..< events.hitCount {
 		hit := events.hitEvents[i]
@@ -161,8 +167,8 @@ check_contact_events :: proc(world_id: b2.WorldId) {
 	}
 }
 
-check_sensor_events :: proc(world_id: b2.WorldId) {
-	events := b2.World_GetSensorEvents(world_id)
+check_sensor_events :: proc() {
+	events := b2.World_GetSensorEvents(g.world_id)
 	for i in 0 ..< events.beginCount {
 		event := events.beginEvents[i]
 
@@ -178,27 +184,32 @@ check_sensor_events :: proc(world_id: b2.WorldId) {
 	}
 }
 
+debug_draw := init_debug_draw()
+
+Game_Render :: proc() {
+	// TODO blend stuff
+	rl.BeginDrawing()
+	defer rl.EndDrawing()
+	rl.ClearBackground(BACKGROUND_COLOR)
+
+	for &entity in g.entities {
+		if entity.draw != nil do entity.draw(&entity)
+	}
+
+	ui_draw()
+
+	if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
+}
+
 Game_Loop :: proc() {
-	debug_draw := init_debug_draw()
-
 	for !rl.WindowShouldClose() {
-		Game_Handle_Input()
+		update_start := time.tick_now()
 		Game_Update()
+		g.update_time_ms = time.duration_milliseconds(time.tick_since(update_start))
 
-		// TODO blend stuff
-
-		rl.BeginDrawing()
-		rl.ClearBackground(BACKGROUND_COLOR)
-
-		for &entity in g.entities {
-			if entity.draw != nil do entity.draw(&entity)
-		}
-
-		ui_draw()
-
-		if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
-
-		rl.EndDrawing()
+		render_start := time.tick_now()
+		Game_Render()
+		g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
 	}
 }
 

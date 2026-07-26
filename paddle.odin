@@ -56,7 +56,7 @@ Paddle_Update :: proc(entity: ^Entity, dt: f32) {
 	target_world := screen_to_world(rl.GetMousePosition())
 	target_world.y = PADDLE_Y
 
-	max_x := WORLD_SCREEN_HALF_WIDTH - PADDLE_HALF_WIDTH - 0.5 // keep paddle inside the side walls
+	max_x := ARENA_HALF_HEIGHT - PADDLE_HALF_WIDTH - 0.5 // keep paddle inside the side walls
 	target_world.x = clamp(target_world.x, -max_x, max_x)
 
 	current_pos := b2.Body_GetPosition(entity.body_id)
