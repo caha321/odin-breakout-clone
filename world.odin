@@ -43,3 +43,15 @@ create_bounds :: proc(world_id: b2.WorldId) {
 	right_box := b2.MakeBox(0.5, WORLD_SCREEN_HALF_HEIGHT)
 	_ = b2.CreatePolygonShape(right_id, wall_shape_def, &right_box)
 }
+
+
+World_Create :: proc() {
+	world_def := b2.DefaultWorldDef()
+	world_def.gravity = {0, 0}
+	g.world_id = b2.CreateWorld(world_def)
+
+	create_bounds(g.world_id)
+	Paddle_Create(g.world_id)
+	Ball_Create(g.world_id)
+	blocks_create(g.world_id)
+}

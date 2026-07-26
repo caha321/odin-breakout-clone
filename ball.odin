@@ -6,17 +6,13 @@ import rl "vendor:raylib"
 BALL_RADIUS :: f32(1)
 BALL_SPEED_INITIAL :: f32(25)
 
-ball_id: b2.BodyId
-
-ball_create :: proc(world_id: b2.WorldId) {
+Ball_Create :: proc(world_id: b2.WorldId) -> uint {
 	ball_def := b2.DefaultBodyDef()
 	ball_def.type = .dynamicBody
 	ball_def.position = {0, 0}
 	ball_def.name = "ball"
 	ball_def.linearVelocity = {BALL_SPEED_INITIAL * 0.7, BALL_SPEED_INITIAL * 0.7}
-	//ball_def.angularVelocity = 1
-	//ball_def.fixedRotation = true // spin doesn't matter for a round ball's motion
-	ball_id = b2.CreateBody(world_id, ball_def)
+	body_id := b2.CreateBody(world_id, ball_def)
 
 	circle := b2.Circle {
 		center = {0, 0},
@@ -31,23 +27,48 @@ ball_create :: proc(world_id: b2.WorldId) {
 
 	data := new(User_Data)
 	data.sound_hit = .NoSound
+	data.entity_kind = .Ball
+	data.entity_id = len(g.entities) + 1 // 0 means invalid
 	shape_def.userData = data
 
-	_ = b2.CreateCircleShape(ball_id, shape_def, &circle)
+	shape_id := b2.CreateCircleShape(body_id, shape_def, &circle)
+	entity := Entity {
+		body_id   = body_id,
+		shape_id  = shape_id,
+		user_data = data,
+		extra     = nil,
+		texture   = .BallGrey,
+		// v-table
+		draw      = Ball_Draw,
+		update    = Ball_Update,
+	}
+
+	append(&g.entities, entity)
+
+	return data.entity_id
 }
 
-ball_draw :: proc() {
-	pos := b2.Body_GetPosition(ball_id)
-	rot := b2.Body_GetRotation(ball_id)
+Ball_Draw :: proc(entity: ^Entity) {
+	pos := b2.Body_GetPosition(entity.body_id)
+	rot := b2.Body_GetRotation(entity.body_id)
 	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
 	screen_pos := world_to_screen(pos)
 
 	diameter := BALL_RADIUS * 2 * PPM
-	ball_texture := g.textures[.BallGrey]
+	rl_texture := g.textures[entity.texture]
 
-	source := rl.Rectangle{0, 0, f32(ball_texture.width), f32(ball_texture.height)}
+	source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
 	dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}
 	origin := rl.Vector2{diameter / 2, diameter / 2} // center pivot
 
-	rl.DrawTexturePro(ball_texture, source, dest, origin, -angle_deg, rl.WHITE)
+	rl.DrawTexturePro(rl_texture, source, dest, origin, -angle_deg, rl.WHITE)
+}
+
+Ball_Update :: proc(entity: ^Entity, dt: f32) {
+	// normalize ball speed
+	vel := b2.Body_GetLinearVelocity(entity.body_id)
+	speed := b2.Length(vel)
+	if speed > 0 {
+		b2.Body_SetLinearVelocity(entity.body_id, vel * (g.ball_speed / speed))
+	}
 }

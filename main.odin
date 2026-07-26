@@ -5,6 +5,29 @@ import "core:os"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+handle_input :: proc() {
+	switch g.state {
+	case .New:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Running)
+		}
+	case .Running:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Paused)
+		}
+	case .Paused:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Running)
+		}
+	case .GameOver:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.New)
+		}
+	}
+
+	if rl.IsKeyPressed(.F1) do g.draw_b2_debug = !g.draw_b2_debug
+}
+
 run :: proc() -> bool {
 	rl.SetTraceLogLevel(.ERROR)
 	rl.SetConfigFlags({.VSYNC_HINT})
@@ -17,18 +40,6 @@ run :: proc() -> bool {
 	defer game_shutdown()
 
 
-	world_def := b2.DefaultWorldDef()
-	world_def.gravity = {0, 0}
-	world_id := b2.CreateWorld(world_def)
-	defer b2.DestroyWorld(world_id)
-
-	create_bounds(world_id)
-	paddle_create(world_id)
-	ball_create(world_id)
-	blocks_create(world_id)
-
-	//
-
 	debug_draw := init_debug_draw()
 
 	DT :: 1.0 / 60.0
@@ -37,36 +48,21 @@ run :: proc() -> bool {
 	accumulated_time: f32
 
 	game_loop: for !rl.WindowShouldClose() {
+		handle_input()
 
-		switch g.state {
-		case .New:
-			if rl.IsKeyPressed(.SPACE) {
-				game_update_state(.Running)
-			}
-		case .Running:
+		if g.state == .Running {
 			accumulated_time += rl.GetFrameTime()
-		case .GameOver:
-			if rl.IsKeyPressed(.SPACE) {
-				game_restart()
-			}
 		}
 
-		if rl.IsKeyPressed(.F1) do g.draw_b2_debug = !g.draw_b2_debug
-
 		for accumulated_time >= DT {
-			paddle_update(DT) // move paddle BEFORE stepping physics
-
-			// normalize ball speed
-			vel := b2.Body_GetLinearVelocity(ball_id)
-			speed := b2.Length(vel)
-			if speed > 0 {
-				b2.Body_SetLinearVelocity(ball_id, vel * (g.ball_speed / speed))
+			for &entity in g.entities {
+				if entity.update != nil do entity.update(&entity, DT)
 			}
 
-			b2.World_Step(world_id, DT, SUB_STEP_COUNT)
+			b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
 
-			check_sensor_events(world_id)
-			check_contact_events(world_id)
+			check_sensor_events(g.world_id)
+			check_contact_events(g.world_id)
 
 			accumulated_time -= DT
 		}
@@ -76,15 +72,13 @@ run :: proc() -> bool {
 		rl.BeginDrawing()
 		rl.ClearBackground(BACKGROUND_COLOR)
 
-		for &block in blocks {
-			block_draw(&block)
+		for &entity in g.entities {
+			if entity.draw != nil do entity.draw(&entity)
 		}
-		ball_draw()
-		paddle_draw()
 
 		ui_draw()
 
-		if g.draw_b2_debug do b2.World_Draw(world_id, &debug_draw)
+		if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
 
 		rl.EndDrawing()
 	}
@@ -98,6 +92,7 @@ check_contact_events :: proc(world_id: b2.WorldId) {
 	for i in 0 ..< events.hitCount {
 		hit := events.hitEvents[i]
 
+		// TODO use v-table instead
 		sd_a := cast(^User_Data)b2.Shape_GetUserData(hit.shapeIdA)
 		sd_b := cast(^User_Data)b2.Shape_GetUserData(hit.shapeIdB)
 
@@ -118,8 +113,8 @@ check_contact_events :: proc(world_id: b2.WorldId) {
 			rl.PlaySound(rl_sound)
 		}
 
-		if sd_a.entity_kind == .Block do block_hit(&blocks[sd_a.entity_id - 1])
-		else if sd_b.entity_kind == .Block do block_hit(&blocks[sd_b.entity_id - 1])
+		if sd_a.entity_kind == .Block do Block_Hit(&g.entities[sd_a.entity_id - 1])
+		else if sd_b.entity_kind == .Block do Block_Hit(&g.entities[sd_b.entity_id - 1])
 	}
 }
 
