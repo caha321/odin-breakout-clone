@@ -133,6 +133,8 @@ Game_Handle_Input :: proc() {
 }
 
 Game_Update :: proc() {
+	update_start := time.tick_now()
+
 	Game_Handle_Input()
 
 	if g.state == .Running {
@@ -151,6 +153,8 @@ Game_Update :: proc() {
 
 		g.accumulated_time -= DT
 	}
+
+	g.update_time_ms = time.duration_milliseconds(time.tick_since(update_start))
 }
 
 check_contact_events :: proc() {
@@ -187,6 +191,7 @@ check_sensor_events :: proc() {
 debug_draw := init_debug_draw()
 
 Game_Render :: proc() {
+	render_start := time.tick_now()
 	// TODO blend stuff
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
@@ -199,26 +204,24 @@ Game_Render :: proc() {
 	ui_draw()
 
 	if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
+	g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
 }
 
-Game_Loop :: proc() {
-	for !rl.WindowShouldClose() {
-		update_start := time.tick_now()
-		Game_Update()
-		g.update_time_ms = time.duration_milliseconds(time.tick_since(update_start))
-
-		render_start := time.tick_now()
-		Game_Render()
-		g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
-	}
-}
 
 Game_AddEntity :: proc(entity: Entity) {
 	assert(b2.IsValid(entity.body_id))
-	assert(b2.IsValid(entity.shape_id))
 
-	entity_id := entity_index_to_userdata(len(g.entities))
-	b2.Shape_SetUserData(entity.shape_id, entity_id)
+	user_data_entity_id := entity_index_to_userdata(len(g.entities))
+
+	// set userdata of body and shapes to entity ID
+	b2.Body_SetUserData(entity.body_id, user_data_entity_id)
+
+	buffer: [8]b2.ShapeId
+	shapes := b2.Body_GetShapes(entity.body_id, buffer[:])
+	for shape_id in shapes {
+		b2.Shape_SetUserData(shape_id, user_data_entity_id)
+	}
+
 
 	// inventory
 

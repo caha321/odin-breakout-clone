@@ -27,17 +27,16 @@ Paddle_Create :: proc() {
 	shape_def := b2.DefaultShapeDef()
 	shape_def.material.friction = 0.3
 	shape_def.enableHitEvents = true
-	shape_id := b2.CreatePolygonShape(body_id, shape_def, &box)
+	_ = b2.CreatePolygonShape(body_id, shape_def, &box)
 
 	Game_AddEntity(
 		{
-			body_id  = body_id,
-			shape_id = shape_id,
-			texture  = .PaddleBlue,
-			extra    = Entity_Extra_Paddle{},
+			body_id = body_id,
+			texture = .PaddleBlue,
+			extra   = Entity_Extra_Paddle{},
 			//v-table
-			draw     = Paddle_Draw,
-			update   = Paddle_Update,
+			draw    = Paddle_Draw,
+			update  = Paddle_Update,
 		},
 	)
 }

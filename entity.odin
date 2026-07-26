@@ -12,14 +12,13 @@ Entity_Extra :: union {
 }
 
 Entity :: struct {
-	body_id:  b2.BodyId,
-	shape_id: b2.ShapeId,
-	texture:  Texture,
-	extra:    Entity_Extra, // by value
+	body_id: b2.BodyId,
+	texture: Texture,
+	extra:   Entity_Extra, // by value
 	// v-table
-	update:   proc(e: ^Entity, dt: f32), // called before physics step
-	draw:     proc(e: ^Entity),
-	hit:      proc(e: ^Entity, hit: b2.ContactHitEvent),
+	update:  proc(e: ^Entity, dt: f32), // called before physics step
+	draw:    proc(e: ^Entity),
+	hit:     proc(e: ^Entity, hit: b2.ContactHitEvent),
 	//destroy:   proc(e: ^Entity),
 }
 

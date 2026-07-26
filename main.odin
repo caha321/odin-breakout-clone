@@ -8,7 +8,7 @@ DT :: 1.0 / 60.0
 SUB_STEP_COUNT :: 4 // Box2D
 
 run :: proc() -> bool {
-	rl.SetTraceLogLevel(.ERROR)
+	rl.SetTraceLogLevel(.WARNING)
 	rl.SetConfigFlags({.VSYNC_HINT})
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout!")
 	defer rl.CloseWindow()
@@ -18,7 +18,10 @@ run :: proc() -> bool {
 	game_init() or_return
 	defer game_shutdown()
 
-	Game_Loop()
+	for !rl.WindowShouldClose() {
+		Game_Update()
+		Game_Render()
+	}
 
 	return true
 }

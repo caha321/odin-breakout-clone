@@ -52,12 +52,11 @@ Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
 	shape_def.enableHitEvents = true
 	shape_def.material.friction = 0.1
 	shape_def.material.restitution = 1.0 // bricks bounce the ball cleanly, like the paddle
+	_ = b2.CreatePolygonShape(body_id, shape_def, &box)
 
-	shape_id := b2.CreatePolygonShape(body_id, shape_def, &box)
 	Game_AddEntity(
 		{
 			body_id = body_id,
-			shape_id = shape_id,
 			extra = Entity_Extra_Block { 	// TODO
 				health        = 1,
 				score_hit     = 1,

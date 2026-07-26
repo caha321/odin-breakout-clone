@@ -31,12 +31,11 @@ Ball_Create :: proc(world_position: [2]f32) {
 	shape_def.material.restitution = 1.0 // perfectly elastic bounce
 	shape_def.enableSensorEvents = true // required on both sides
 	shape_def.enableHitEvents = true
-	shape_id := b2.CreateCircleShape(body_id, shape_def, &circle)
+	_ = b2.CreateCircleShape(body_id, shape_def, &circle)
 
 	Game_AddEntity(
 		{
 			body_id = body_id,
-			shape_id = shape_id,
 			extra = Entity_Extra_Ball {
 				damage = 1, // TODO feature: deal more damage to blocks
 			},
