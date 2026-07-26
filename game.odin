@@ -5,29 +5,6 @@ import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 
-// all available sounds in the game
-Sound :: enum {
-	NoSound,
-	HitBlock,
-	HitPaddle,
-	HitWall,
-	GameStart,
-	GameOver,
-}
-
-// all available textures in the game
-Texture :: enum {
-	NoTexture,
-	BallGrey,
-	PaddleBlue,
-	BlockBlue,
-	BlockGreen,
-	BlockGrey,
-	BlockPurple,
-	BlockRed,
-	BlockYellow,
-}
-
 Game_State :: enum {
 	New,
 	Running,
@@ -36,14 +13,16 @@ Game_State :: enum {
 }
 
 Game :: struct {
-	state:         Game_State,
-	score:         int,
-	textures:      [Texture]rl.Texture2D,
-	sounds:        [Sound]rl.Sound,
-	entities:      [dynamic]Entity,
-	ball_speed:    f32,
-	world_id:      b2.WorldId,
-	draw_b2_debug: bool,
+	state:            Game_State,
+	score:            int,
+	textures:         [Texture]rl.Texture2D,
+	sounds:           [Sound]rl.Sound,
+	entities:         [dynamic]Entity,
+	ball_speed:       f32,
+	// physics stuff
+	world_id:         b2.WorldId,
+	draw_b2_debug:    bool,
+	accumulated_time: f32,
 }
 
 g: ^Game
@@ -52,31 +31,12 @@ game_init :: proc() -> bool {
 	rl.InitAudioDevice()
 
 	g = new(Game)
-	game_load_assets() or_return
+	load_assets() or_return
 	game_update_state(.New)
 
 	return true
 }
 
-game_load_assets :: proc() -> bool {
-	load_texture("assets/ballGrey.png", .BallGrey) or_return
-	load_texture("assets/paddleBlu.png", .PaddleBlue) or_return
-
-	load_texture("assets/element_blue_rectangle.png", .BlockBlue) or_return
-	load_texture("assets/element_green_rectangle.png", .BlockGreen) or_return
-	load_texture("assets/element_grey_rectangle.png", .BlockGrey) or_return
-	load_texture("assets/element_purple_rectangle.png", .BlockPurple) or_return
-	load_texture("assets/element_red_rectangle.png", .BlockRed) or_return
-	load_texture("assets/element_yellow_rectangle.png", .BlockYellow) or_return
-
-	load_sound("assets/impactTin_medium_001.ogg", .HitBlock) or_return
-	load_sound("assets/impactPlate_medium_000.ogg", .HitPaddle) or_return
-	load_sound("assets/impactMetal_medium_004.ogg", .HitWall) or_return
-	load_sound("assets/jingles_PIZZI02.ogg", .GameStart) or_return
-	load_sound("assets/jingles_PIZZI01.ogg", .GameOver) or_return
-
-	return true
-}
 
 // Restart game, resets all state to initial values
 game_restart :: proc() {
@@ -140,24 +100,78 @@ game_update_state :: proc(state: Game_State) {
 	g.state = state
 }
 
-load_texture :: proc(file_name: cstring, texture: Texture) -> bool {
-	rl_texture := rl.LoadTexture(file_name)
-	if rl_texture.id <= 0 {
-		log.error("Could not load texture:", file_name)
-		return false
+Game_Handle_Input :: proc() {
+	switch g.state {
+	case .New:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Running)
+		}
+	case .Running:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Paused)
+		}
+	case .Paused:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.Running)
+		}
+	case .GameOver:
+		if rl.IsKeyPressed(.SPACE) {
+			game_update_state(.New)
+		}
 	}
-	log.info("Loading Texture:", file_name, "as", texture)
-	g.textures[texture] = rl_texture
-	return true
+
+	if rl.IsKeyPressed(.F1) do g.draw_b2_debug = !g.draw_b2_debug
 }
 
-load_sound :: proc(file_name: cstring, sound: Sound) -> bool {
-	rl_sound := rl.LoadSound(file_name)
-	if !rl.IsSoundValid(rl_sound) {
-		log.error("Could not load sound:", file_name)
-		return false
+Game_Update :: proc() {
+	if g.state == .Running {
+		g.accumulated_time += rl.GetFrameTime()
 	}
-	log.info("Loaded Sound:", file_name, "as", sound)
-	g.sounds[sound] = rl_sound
-	return true
+
+	for g.accumulated_time >= DT {
+		for &entity in g.entities {
+			if entity.update != nil do entity.update(&entity, DT)
+		}
+
+		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
+
+		check_sensor_events(g.world_id)
+		check_contact_events(g.world_id)
+
+		g.accumulated_time -= DT
+	}
+}
+
+Game_Loop :: proc() {
+	debug_draw := init_debug_draw()
+
+	for !rl.WindowShouldClose() {
+		Game_Handle_Input()
+		Game_Update()
+
+		// TODO blend stuff
+
+		rl.BeginDrawing()
+		rl.ClearBackground(BACKGROUND_COLOR)
+
+		for &entity in g.entities {
+			if entity.draw != nil do entity.draw(&entity)
+		}
+
+		ui_draw()
+
+		if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
+
+		rl.EndDrawing()
+	}
+}
+
+Game_AddEntity :: proc(entity: Entity) {
+	assert(b2.IsValid(entity.body_id))
+	assert(b2.IsValid(entity.shape_id))
+
+	entity_id := entity_index_to_userdata(len(g.entities))
+	b2.Shape_SetUserData(entity.shape_id, entity_id)
+
+	append(&g.entities, entity)
 }

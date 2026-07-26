@@ -17,7 +17,7 @@ BLOCK_HALF_WIDTH :: 3
 BLOCK_HALF_HEIGHT :: 1.5
 BLOCK_TOP_Y :: 20
 
-blocks_create :: proc(world_id: b2.WorldId) {
+blocks_create :: proc() {
 	row_textures := [BLOCK_ROWS]Texture {
 		.BlockRed,
 		.BlockGreen,
@@ -35,21 +35,16 @@ blocks_create :: proc(world_id: b2.WorldId) {
 			x := start_x + f32(col) * (BLOCK_HALF_WIDTH * 2) + BLOCK_HALF_WIDTH / 2
 			y := BLOCK_TOP_Y - f32(row) * (BLOCK_HALF_HEIGHT * 2)
 
-			Block_Create(
-				world_id,
-				position = {x, y},
-				texture = row_textures[row],
-				score = row_scores[row],
-			)
+			Block_Create(position = {x, y}, texture = row_textures[row], score = row_scores[row])
 		}
 	}
 }
 
-Block_Create :: proc(world_id: b2.WorldId, position: [2]f32, texture: Texture, score: i8) -> uint {
+Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
 	body_def := b2.DefaultBodyDef()
 	body_def.type = .staticBody
 	body_def.position = position
-	body_id := b2.CreateBody(world_id, body_def)
+	body_id := b2.CreateBody(g.world_id, body_def)
 
 	box := b2.MakeBox(BLOCK_HALF_WIDTH, BLOCK_HALF_HEIGHT)
 	shape_def := b2.DefaultShapeDef()
@@ -57,30 +52,22 @@ Block_Create :: proc(world_id: b2.WorldId, position: [2]f32, texture: Texture, s
 	shape_def.material.friction = 0.1
 	shape_def.material.restitution = 1.0 // bricks bounce the ball cleanly, like the paddle
 
-	data := new(User_Data)
-	data.sound_hit = .HitBlock
-	data.entity_kind = .Block
-	data.entity_id = len(g.entities) + 1 // 0 means invalid
-	shape_def.userData = data
-
 	shape_id := b2.CreatePolygonShape(body_id, shape_def, &box)
-	entity := Entity {
-		body_id = body_id,
-		shape_id = shape_id,
-		user_data = data,
-		extra = Entity_Extra_Block { 	// TODO
-			health        = 2,
-			score_hit     = 1,
-			score_destroy = score,
+	Game_AddEntity(
+		{
+			body_id = body_id,
+			shape_id = shape_id,
+			extra = Entity_Extra_Block { 	// TODO
+				health        = 1,
+				score_hit     = 1,
+				score_destroy = score,
+			},
+			texture = texture,
+			// v-table
+			draw = Block_Draw,
+			hit = Block_Hit,
 		},
-		texture = texture,
-		// v-table
-		draw = Block_Draw,
-	}
-
-	append(&g.entities, entity)
-
-	return data.entity_id
+	)
 }
 
 Block_Draw :: proc(entity: ^Entity) {
@@ -110,8 +97,9 @@ Block_Draw :: proc(entity: ^Entity) {
 	)
 }
 
-Block_Hit :: proc(entity: ^Entity) {
-	log.debug("Block hit", entity, entity.user_data)
+Block_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+	log.debug("Block hit", entity)
+	play_hit_sound(.HitBlock, hit)
 	extra := &entity.extra.(Entity_Extra_Block) // mutate
 	extra.health -= 1
 	g.score += int(extra.score_hit)

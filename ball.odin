@@ -6,13 +6,13 @@ import rl "vendor:raylib"
 BALL_RADIUS :: f32(1)
 BALL_SPEED_INITIAL :: f32(25)
 
-Ball_Create :: proc(world_id: b2.WorldId) -> uint {
+Ball_Create :: proc() {
 	ball_def := b2.DefaultBodyDef()
 	ball_def.type = .dynamicBody
 	ball_def.position = {0, 0}
 	ball_def.name = "ball"
 	ball_def.linearVelocity = {BALL_SPEED_INITIAL * 0.7, BALL_SPEED_INITIAL * 0.7}
-	body_id := b2.CreateBody(world_id, ball_def)
+	body_id := b2.CreateBody(g.world_id, ball_def)
 
 	circle := b2.Circle {
 		center = {0, 0},
@@ -24,28 +24,20 @@ Ball_Create :: proc(world_id: b2.WorldId) -> uint {
 	shape_def.material.restitution = 1.0 // perfectly elastic bounce
 	shape_def.enableSensorEvents = true // required on both sides
 	shape_def.enableHitEvents = true
-
-	data := new(User_Data)
-	data.sound_hit = .NoSound
-	data.entity_kind = .Ball
-	data.entity_id = len(g.entities) + 1 // 0 means invalid
-	shape_def.userData = data
-
 	shape_id := b2.CreateCircleShape(body_id, shape_def, &circle)
-	entity := Entity {
-		body_id   = body_id,
-		shape_id  = shape_id,
-		user_data = data,
-		extra     = nil,
-		texture   = .BallGrey,
-		// v-table
-		draw      = Ball_Draw,
-		update    = Ball_Update,
-	}
 
-	append(&g.entities, entity)
-
-	return data.entity_id
+	Game_AddEntity(
+		{
+			body_id  = body_id,
+			shape_id = shape_id,
+			extra    = nil,
+			texture  = .BallGrey,
+			// v-table
+			draw     = Ball_Draw,
+			update   = Ball_Update,
+			//hit       = Ball_Hit,
+		},
+	)
 }
 
 Ball_Draw :: proc(entity: ^Entity) {
@@ -72,3 +64,9 @@ Ball_Update :: proc(entity: ^Entity, dt: f32) {
 		b2.Body_SetLinearVelocity(entity.body_id, vel * (g.ball_speed / speed))
 	}
 }
+
+/*
+Ball_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+
+}
+*/

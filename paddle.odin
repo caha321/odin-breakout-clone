@@ -15,43 +15,31 @@ Entity_Extra_Paddle :: struct {
 	held_tilt:  f32,
 }
 
-Paddle_Create :: proc(world_id: b2.WorldId) -> uint {
+Paddle_Create :: proc() {
 	body_def := b2.DefaultBodyDef()
 	body_def.type = .kinematicBody // moved by player, not by physics forces
 	body_def.name = "paddle"
 	body_def.position = {0, PADDLE_Y}
-	body_id := b2.CreateBody(world_id, body_def)
+	body_id := b2.CreateBody(g.world_id, body_def)
 
 	// A "rounded box" is just a polygon with a corner radius
 	box := b2.MakeRoundedBox(PADDLE_HALF_WIDTH, PADDLE_HALF_HEIGHT, PADDLE_CORNER_RADIUS)
 	shape_def := b2.DefaultShapeDef()
 	shape_def.material.friction = 0.3
 	shape_def.enableHitEvents = true
-
-	data := new(User_Data)
-	data.sound_hit = .HitPaddle
-	data.entity_kind = .Paddle
-	data.entity_id = len(g.entities) + 1 // 0 means invalid
-	shape_def.userData = data
-
 	shape_id := b2.CreatePolygonShape(body_id, shape_def, &box)
 
-	append(
-		&g.entities,
-		Entity {
-			kind      = .Paddle,
-			body_id   = body_id,
-			shape_id  = shape_id,
-			user_data = data,
-			texture   = .PaddleBlue,
-			extra     = Entity_Extra_Paddle{},
+	Game_AddEntity(
+		{
+			body_id  = body_id,
+			shape_id = shape_id,
+			texture  = .PaddleBlue,
+			extra    = Entity_Extra_Paddle{},
 			//v-table
-			draw      = Paddle_Draw,
-			update    = Paddle_Update,
+			draw     = Paddle_Draw,
+			update   = Paddle_Update,
 		},
 	)
-
-	return data.entity_id
 }
 
 
@@ -115,4 +103,8 @@ Paddle_Draw :: proc(entity: ^Entity) {
 	origin := rl.Vector2{width / 2, height / 2}
 
 	rl.DrawTexturePro(paddle_texture, source, dest, origin, -angle_deg, rl.WHITE)
+}
+
+Paddle_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+	play_hit_sound(.HitPaddle, hit)
 }
