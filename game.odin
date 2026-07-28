@@ -67,6 +67,7 @@ game_clear_entities :: proc() {
 
 game_shutdown :: proc() {
 	game_clear_entities()
+	delete(g.entities)
 
 	for rl_texture, texture in g.textures {
 		if rl.IsTextureValid(rl_texture) {
@@ -86,7 +87,7 @@ game_shutdown :: proc() {
 
 	rl.CloseAudioDevice()
 
-	// TODO how to delete g?
+	free(g)
 }
 
 game_update_state :: proc(state: Game_State) {
