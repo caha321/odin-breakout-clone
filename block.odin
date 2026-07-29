@@ -13,7 +13,7 @@ Block_Kind :: enum {
 	Yellow,
 }
 
-Entity_Extra_Block :: struct {
+Block :: struct {
 	kind:          Block_Kind,
 	health:        i8, // <= 0 means dead
 	score_hit:     i8,
@@ -61,15 +61,7 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	Game_AddEntity(
 		{
 			body_id = body_id,
-			extra = Entity_Extra_Block { 	// TODO
-				health        = 1,
-				score_hit     = 1,
-				score_destroy = score,
-				kind          = kind,
-			},
-			// v-table
-			draw = Block_Draw,
-			hit = Block_Hit,
+			variant = Block{health = 1, score_hit = 1, score_destroy = score, kind = kind},
 		},
 	)
 }
@@ -84,10 +76,8 @@ block_kind_to_texture := [Block_Kind]Texture {
 	.Yellow = .BlockYellow,
 }
 
-Block_Draw :: proc(entity: ^Entity) {
-	extra := &entity.extra.(Entity_Extra_Block)
-	if extra.health <= 0 do return
-
+Block_Draw :: proc(entity: ^Entity, variant: Block) {
+	if variant.health <= 0 do return
 
 	pos := b2.Body_GetPosition(entity.body_id)
 	screen_pos := world_to_screen(pos)
@@ -95,8 +85,7 @@ Block_Draw :: proc(entity: ^Entity) {
 	width: f32 = BLOCK_HALF_WIDTH * 2 * PPM
 	height: f32 = BLOCK_HALF_HEIGHT * 2 * PPM
 
-	rl_texture := g.textures[block_kind_to_texture[extra.kind]]
-
+	rl_texture := g.textures[block_kind_to_texture[variant.kind]]
 
 	rl.DrawTexturePro(
 		rl_texture,
@@ -108,15 +97,14 @@ Block_Draw :: proc(entity: ^Entity) {
 	)
 }
 
-Block_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 	log.debug("Block hit", entity)
 	play_hit_sound(.HitBlock, hit)
-	extra := &entity.extra.(Entity_Extra_Block) // mutate
-	extra.health -= 1
-	g.score += int(extra.score_hit)
+	variant.health -= 1
+	g.score += int(variant.score_hit)
 	g.ball_speed += 0.5
-	if extra.health <= 0 {
-		g.score += int(extra.score_destroy)
+	if variant.health <= 0 {
+		g.score += int(variant.score_destroy)
 		Entity_Destroy(entity)
 		g.remaining_blocks -= 1
 	}

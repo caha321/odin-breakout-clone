@@ -15,7 +15,7 @@ Ball_Kind :: enum {
 	Grey,
 }
 
-Entity_Extra_Ball :: struct {
+Ball :: struct {
 	kind:   Ball_Kind,
 	damage: u8,
 }
@@ -43,14 +43,10 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	Game_AddEntity(
 		{
 			body_id = body_id,
-			extra = Entity_Extra_Ball {
+			variant = Ball {
 				damage = 1, // TODO feature: deal more damage to blocks
 				kind   = kind,
 			},
-			// v-table
-			draw = Ball_Draw,
-			update = Ball_Update,
-			//hit       = Ball_Hit,
 		},
 	)
 }
@@ -75,20 +71,19 @@ ball_kind_to_texture := [Ball_Kind]Texture {
 	.Grey = .BallGrey,
 }
 
-Ball_Draw :: proc(entity: ^Entity) {
-	if !b2.IsValid(entity.body_id) {
+Ball_Draw :: proc(self: ^Entity) {
+	if !b2.IsValid(self.body_id) {
 		log.debug("Cannot draw ball without valid body!")
 		return
 	}
 
-	extra := entity.extra.(Entity_Extra_Ball)
-	pos := b2.Body_GetPosition(entity.body_id)
-	rot := b2.Body_GetRotation(entity.body_id)
+	pos := b2.Body_GetPosition(self.body_id)
+	rot := b2.Body_GetRotation(self.body_id)
 	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
 	screen_pos := world_to_screen(pos)
 
 	diameter := BALL_RADIUS * 2 * PPM
-	rl_texture := g.textures[ball_kind_to_texture[extra.kind]]
+	rl_texture := g.textures[ball_kind_to_texture[self.variant.(Ball).kind]]
 
 	source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
 	dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}
@@ -97,12 +92,12 @@ Ball_Draw :: proc(entity: ^Entity) {
 	rl.DrawTexturePro(rl_texture, source, dest, origin, -angle_deg, rl.WHITE)
 }
 
-Ball_Update :: proc(entity: ^Entity, dt: f32) {
+Ball_Update :: proc(self: ^Entity, dt: f32) {
 	// normalize ball speed
-	vel := b2.Body_GetLinearVelocity(entity.body_id)
+	vel := b2.Body_GetLinearVelocity(self.body_id)
 	speed := b2.Length(vel)
 	if speed > 0 {
-		b2.Body_SetLinearVelocity(entity.body_id, vel * (g.ball_speed / speed))
+		b2.Body_SetLinearVelocity(self.body_id, vel * (g.ball_speed / speed))
 	}
 }
 

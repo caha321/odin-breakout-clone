@@ -23,6 +23,8 @@ ARENA_HALF_WIDTH :: 32
 ARENA_HALF_HEIGHT :: 32
 WALL_THICKNESS :: 0.5
 
+Wall :: struct {}
+
 create_bounds :: proc() {
 	wall_def := b2.DefaultBodyDef()
 	wall_shape_def := b2.DefaultShapeDef()
@@ -46,7 +48,7 @@ create_bounds :: proc() {
 	ceiling_id := b2.CreateBody(g.world_id, ceiling_def)
 	ceiling_box := b2.MakeBox(ARENA_HALF_WIDTH, WALL_THICKNESS)
 	_ = b2.CreatePolygonShape(ceiling_id, wall_shape_def, &ceiling_box)
-	Game_AddEntity({body_id = ceiling_id, hit = Wall_Hit})
+	Game_AddEntity({body_id = ceiling_id, variant = Wall{}})
 
 	// Left wall
 	left_def := wall_def
@@ -55,7 +57,7 @@ create_bounds :: proc() {
 	left_id := b2.CreateBody(g.world_id, left_def)
 	left_box := b2.MakeBox(WALL_THICKNESS, ARENA_HALF_HEIGHT)
 	_ = b2.CreatePolygonShape(left_id, wall_shape_def, &left_box)
-	Game_AddEntity({body_id = left_id, hit = Wall_Hit})
+	Game_AddEntity({body_id = left_id, variant = Wall{}})
 
 	// Right wall
 	right_def := wall_def
@@ -64,7 +66,7 @@ create_bounds :: proc() {
 	right_id := b2.CreateBody(g.world_id, right_def)
 	right_box := b2.MakeBox(WALL_THICKNESS, ARENA_HALF_HEIGHT)
 	_ = b2.CreatePolygonShape(right_id, wall_shape_def, &right_box)
-	Game_AddEntity({body_id = right_id, hit = Wall_Hit})
+	Game_AddEntity({body_id = right_id, variant = Wall{}})
 }
 
 

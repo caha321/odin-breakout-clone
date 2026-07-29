@@ -143,10 +143,7 @@ Game_Update :: proc() {
 	}
 
 	for g.accumulated_time >= DT {
-		for &entity in g.entities {
-			if entity.update != nil do entity.update(&entity, DT)
-		}
-
+		for &entity in g.entities do Entity_Update(&entity, DT)
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
 
 		check_sensor_events()
@@ -165,10 +162,10 @@ check_contact_events :: proc() {
 		hit := events.hitEvents[i]
 
 		entity_a := get_entity(b2.Shape_GetUserData(hit.shapeIdA))
-		if entity_a != nil && entity_a.hit != nil do entity_a.hit(entity_a, hit)
+		if entity_a != nil do Entity_Hit(entity_a, hit)
 
 		entity_b := get_entity(b2.Shape_GetUserData(hit.shapeIdB))
-		if entity_b != nil && entity_b.hit != nil do entity_b.hit(entity_b, hit)
+		if entity_b != nil do Entity_Hit(entity_b, hit)
 	}
 }
 
@@ -198,13 +195,11 @@ Game_Render :: proc() {
 	defer rl.EndDrawing()
 	rl.ClearBackground(BACKGROUND_COLOR)
 
-	for &entity in g.entities {
-		if entity.draw != nil do entity.draw(&entity)
-	}
-
+	for &entity in g.entities do Entity_Draw(&entity)
 	ui_draw()
 
 	if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
+
 	g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
 }
 
@@ -226,10 +221,10 @@ Game_AddEntity :: proc(entity: Entity) {
 
 	// inventory
 
-	#partial switch extra in entity.extra {
-	case Entity_Extra_Ball:
+	#partial switch v in entity.variant {
+	case Ball:
 		g.remaining_balls += 1
-	case Entity_Extra_Block:
+	case Block:
 		g.remaining_blocks += 1
 	}
 

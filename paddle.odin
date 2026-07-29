@@ -28,7 +28,7 @@ Paddle_Size :: enum {
 	Wide,
 }
 
-Entity_Extra_Paddle :: struct {
+Paddle :: struct {
 	flags: Paddle_Flags,
 	size:  Paddle_Size,
 }
@@ -46,21 +46,11 @@ Paddle_Create :: proc(size: Paddle_Size = .Normal) {
 	shape_def.enableHitEvents = true
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
-	Game_AddEntity(
-		{
-			body_id = body_id,
-			extra = Entity_Extra_Paddle{flags = {.Tilt_Enabled}, size = size},
-			//v-table
-			draw = Paddle_Draw,
-			update = Paddle_Update,
-			hit = Paddle_Hit,
-		},
-	)
+	Game_AddEntity({body_id = body_id, variant = Paddle{flags = {.Tilt_Enabled}, size = size}})
 }
 
 // Call once per fixed physics step, BEFORE b2.World_Step
-Paddle_Update :: proc(entity: ^Entity, dt: f32) {
-	extra := entity.extra.(Entity_Extra_Paddle)
+Paddle_Update :: proc(entity: ^Entity, variant: Paddle, dt: f32) {
 	target_world := screen_to_world(rl.GetMousePosition())
 	target_world.y = PADDLE_Y
 
@@ -74,7 +64,7 @@ Paddle_Update :: proc(entity: ^Entity, dt: f32) {
 	velo := (target_world - current_pos) / dt
 	b2.Body_SetLinearVelocity(entity.body_id, velo)
 
-	if .Tilt_Enabled in extra.flags { 	// ---- Tilt logic ----
+	if .Tilt_Enabled in variant.flags { 	// ---- Tilt logic ----
 		target_angle: f32
 		if abs(velo.x) > PADDLE_TILT_VX_STOP_THRESHOLD {
 			target_angle = clamp(
@@ -93,15 +83,13 @@ Paddle_Update :: proc(entity: ^Entity, dt: f32) {
 	}
 }
 
-Paddle_Draw :: proc(entity: ^Entity) {
-	extra := entity.extra.(Entity_Extra_Paddle)
-
+Paddle_Draw :: proc(entity: ^Entity, variant: Paddle) {
 	pos := b2.Body_GetPosition(entity.body_id)
 	rot := b2.Body_GetRotation(entity.body_id)
 	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
 	screen_pos := world_to_screen(pos)
 
-	width := paddle_half_width(extra.size) * 2 * PPM
+	width := paddle_half_width(variant.size) * 2 * PPM
 	height := PADDLE_HALF_HEIGHT * 2 * PPM
 	paddle_texture := g.textures[.PaddleBlue]
 
@@ -116,10 +104,9 @@ Paddle_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
 	play_hit_sound(.HitPaddle, hit)
 }
 
-Paddle_SetSize :: proc(entity: ^Entity, size: Paddle_Size) {
+Paddle_SetSize :: proc(entity: ^Entity, variant: ^Paddle, size: Paddle_Size) {
 	log.debug("Setting paddle size to", size)
-	extra := &entity.extra.(Entity_Extra_Paddle) // mutate
-	extra.size = size
+	variant.size = size
 
 	buffer: [2]b2.ShapeId
 	shapes := b2.Body_GetShapes(entity.body_id, buffer[:])

@@ -4,21 +4,55 @@ import "core:log"
 import b2 "vendor:box2d"
 
 
-// Extra data not shared by all entities. Size will be maximum size of each
-Entity_Extra :: union {
-	Entity_Extra_Ball,
-	Entity_Extra_Paddle,
-	Entity_Extra_Block,
+Entity_Variant :: union {
+	Ball,
+	Block,
+	Paddle,
+	Wall,
 }
 
 Entity :: struct {
 	body_id: b2.BodyId,
-	extra:   Entity_Extra, // by value
-	// v-table
-	update:  proc(e: ^Entity, dt: f32), // called before physics step
-	draw:    proc(e: ^Entity),
-	hit:     proc(e: ^Entity, hit: b2.ContactHitEvent),
-	//destroy:   proc(e: ^Entity),
+	variant: Entity_Variant,
+}
+
+Entity_Draw :: proc(entity: ^Entity) {
+	switch v in entity.variant {
+	case Ball:
+		Ball_Draw(entity)
+	case Block:
+		Block_Draw(entity, v)
+	case Paddle:
+		Paddle_Draw(entity, v)
+	case Wall:
+		break
+	}
+}
+
+Entity_Update :: proc(entity: ^Entity, dt: f32) {
+	switch v in entity.variant {
+	case Ball:
+		Ball_Update(entity, dt)
+	case Paddle:
+		Paddle_Update(entity, v, dt)
+	case Block:
+		break
+	case Wall:
+		break
+	}
+}
+
+Entity_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+	switch &v in entity.variant {
+	case Ball:
+		break
+	case Block:
+		Block_Hit(entity, &v, hit)
+	case Paddle:
+		Paddle_Hit(entity, hit)
+	case Wall:
+		Wall_Hit(entity, hit)
+	}
 }
 
 Entity_Destroy :: proc(entity: ^Entity) {
