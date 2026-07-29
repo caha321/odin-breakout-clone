@@ -75,9 +75,9 @@ World_Create :: proc() {
 
 	create_bounds()
 	Paddle_Create()
-	Ball_Create({-5, 0})
+	Ball_Create({-5, 0}, kind = .Blue)
 	Ball_Create({0, 0})
-	Ball_Create({5, 0})
+	Ball_Create({5, 0}, kind = .Blue)
 	blocks_create()
 }
 

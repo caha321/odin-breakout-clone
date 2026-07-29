@@ -18,6 +18,7 @@ Sound :: enum {
 Texture :: enum {
 	NoTexture,
 	BallGrey,
+	BallBlue,
 	PaddleBlue,
 	BlockBlue,
 	BlockGreen,
@@ -29,6 +30,7 @@ Texture :: enum {
 
 load_assets :: proc() -> bool {
 	load_texture("assets/ballGrey.png", .BallGrey) or_return
+	load_texture("assets/ballBlue.png", .BallBlue) or_return
 	load_texture("assets/paddleBlu.png", .PaddleBlue) or_return
 
 	load_texture("assets/element_blue_rectangle.png", .BlockBlue) or_return

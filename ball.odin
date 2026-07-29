@@ -1,5 +1,6 @@
 package breakout
 
+import "core:log"
 import "core:math"
 import "core:math/rand"
 import b2 "vendor:box2d"
@@ -9,11 +10,17 @@ import rl "vendor:raylib"
 BALL_RADIUS :: f32(1)
 BALL_SPEED_INITIAL :: f32(25)
 
+Ball_Kind :: enum {
+	Blue,
+	Grey,
+}
+
 Entity_Extra_Ball :: struct {
+	kind:   Ball_Kind,
 	damage: u8,
 }
 
-Ball_Create :: proc(world_position: [2]f32) {
+Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	ball_def := b2.DefaultBodyDef()
 	ball_def.type = .dynamicBody
 	ball_def.position = world_position
@@ -38,6 +45,7 @@ Ball_Create :: proc(world_position: [2]f32) {
 			body_id = body_id,
 			extra = Entity_Extra_Ball {
 				damage = 1, // TODO feature: deal more damage to blocks
+				kind   = kind,
 			},
 			// v-table
 			draw = Ball_Draw,
@@ -61,22 +69,32 @@ random_ball_velocity :: proc(speed: f32) -> [2]f32 {
 	return {math.cos(angle) * speed, math.sin(angle) * speed}
 }
 
+@(private = "file")
+ball_kind_to_texture := [Ball_Kind]Texture {
+	.Blue = .BallBlue,
+	.Grey = .BallGrey,
+}
+
 Ball_Draw :: proc(entity: ^Entity) {
-	if b2.IsValid(entity.body_id) {
-		pos := b2.Body_GetPosition(entity.body_id)
-		rot := b2.Body_GetRotation(entity.body_id)
-		angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
-		screen_pos := world_to_screen(pos)
-
-		diameter := BALL_RADIUS * 2 * PPM
-		rl_texture := g.textures[.BallGrey]
-
-		source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
-		dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}
-		origin := rl.Vector2{diameter / 2, diameter / 2} // center pivot
-
-		rl.DrawTexturePro(rl_texture, source, dest, origin, -angle_deg, rl.WHITE)
+	if !b2.IsValid(entity.body_id) {
+		log.debug("Cannot draw ball without valid body!")
+		return
 	}
+
+	extra := entity.extra.(Entity_Extra_Ball)
+	pos := b2.Body_GetPosition(entity.body_id)
+	rot := b2.Body_GetRotation(entity.body_id)
+	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
+	screen_pos := world_to_screen(pos)
+
+	diameter := BALL_RADIUS * 2 * PPM
+	rl_texture := g.textures[ball_kind_to_texture[extra.kind]]
+
+	source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
+	dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}
+	origin := rl.Vector2{diameter / 2, diameter / 2} // center pivot
+
+	rl.DrawTexturePro(rl_texture, source, dest, origin, -angle_deg, rl.WHITE)
 }
 
 Ball_Update :: proc(entity: ^Entity, dt: f32) {
