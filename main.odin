@@ -30,8 +30,6 @@ run :: proc() -> bool {
 
 
 main :: proc() {
-	context.logger = log.create_console_logger()
-
 	when ODIN_DEBUG {
 		track: mem.Tracking_Allocator
 		mem.tracking_allocator_init(&track, context.allocator)
@@ -46,7 +44,12 @@ main :: proc() {
 			}
 			mem.tracking_allocator_destroy(&track)
 		}
+		log_level :: log.Level.Debug
+	} else {
+		log_level :: log.Level.Info
 	}
+
+	context.logger = log.create_console_logger(lowest = log_level)
 
 	if !run() {
 		os.exit(1)
