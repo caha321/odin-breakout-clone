@@ -4,7 +4,17 @@ import "core:log"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+Block_Kind :: enum {
+	Red,
+	Blue,
+	Green,
+	Purple,
+	Grey,
+	Yellow,
+}
+
 Entity_Extra_Block :: struct {
+	kind:          Block_Kind,
 	health:        i8, // <= 0 means dead
 	score_hit:     i8,
 	score_destroy: i8,
@@ -18,13 +28,7 @@ BLOCK_HALF_HEIGHT :: 1.5
 BLOCK_TOP_Y :: 20
 
 blocks_create :: proc() {
-	row_textures := [BLOCK_ROWS]Texture {
-		.BlockRed,
-		.BlockGreen,
-		.BlockPurple,
-		.BlockGrey,
-		.BlockYellow,
-	}
+	row_kinds := [BLOCK_ROWS]Block_Kind{.Red, .Green, .Purple, .Grey, .Yellow}
 	row_scores := [BLOCK_ROWS]i8{20, 15, 10, 5, 1}
 
 	total_width := f32(BLOCK_COLS) * (BLOCK_HALF_WIDTH * 2) - BLOCK_HALF_WIDTH
@@ -35,12 +39,12 @@ blocks_create :: proc() {
 			x := start_x + f32(col) * (BLOCK_HALF_WIDTH * 2) + BLOCK_HALF_WIDTH / 2
 			y := BLOCK_TOP_Y - f32(row) * (BLOCK_HALF_HEIGHT * 2)
 
-			Block_Create(position = {x, y}, texture = row_textures[row], score = row_scores[row])
+			Block_Create(position = {x, y}, kind = row_kinds[row], score = row_scores[row])
 		}
 	}
 }
 
-Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
+Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	body_def := b2.DefaultBodyDef()
 	body_def.name = "block"
 	body_def.type = .staticBody
@@ -61,8 +65,8 @@ Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
 				health        = 1,
 				score_hit     = 1,
 				score_destroy = score,
+				kind          = kind,
 			},
-			texture = texture,
 			// v-table
 			draw = Block_Draw,
 			hit = Block_Hit,
@@ -70,22 +74,29 @@ Block_Create :: proc(position: [2]f32, texture: Texture, score: i8) {
 	)
 }
 
+@(private = "file")
+block_kind_to_texture := [Block_Kind]Texture {
+	.Red    = .BlockRed,
+	.Blue   = .BlockBlue,
+	.Green  = .BlockGreen,
+	.Purple = .BlockPurple,
+	.Grey   = .BlockGrey,
+	.Yellow = .BlockYellow,
+}
+
 Block_Draw :: proc(entity: ^Entity) {
 	extra := &entity.extra.(Entity_Extra_Block)
 	if extra.health <= 0 do return
 
-
-	if entity.texture == .NoTexture {
-		log.warn("Block with no texture, skipping!")
-		return
-	}
 
 	pos := b2.Body_GetPosition(entity.body_id)
 	screen_pos := world_to_screen(pos)
 
 	width: f32 = BLOCK_HALF_WIDTH * 2 * PPM
 	height: f32 = BLOCK_HALF_HEIGHT * 2 * PPM
-	rl_texture := g.textures[entity.texture]
+
+	rl_texture := g.textures[block_kind_to_texture[extra.kind]]
+
 
 	rl.DrawTexturePro(
 		rl_texture,

@@ -39,7 +39,6 @@ Ball_Create :: proc(world_position: [2]f32) {
 			extra = Entity_Extra_Ball {
 				damage = 1, // TODO feature: deal more damage to blocks
 			},
-			texture = .BallGrey,
 			// v-table
 			draw = Ball_Draw,
 			update = Ball_Update,
@@ -70,7 +69,7 @@ Ball_Draw :: proc(entity: ^Entity) {
 		screen_pos := world_to_screen(pos)
 
 		diameter := BALL_RADIUS * 2 * PPM
-		rl_texture := g.textures[entity.texture]
+		rl_texture := g.textures[.BallGrey]
 
 		source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
 		dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}

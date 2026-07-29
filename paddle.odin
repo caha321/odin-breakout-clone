@@ -49,7 +49,6 @@ Paddle_Create :: proc(size: Paddle_Size = .Normal) {
 	Game_AddEntity(
 		{
 			body_id = body_id,
-			texture = .PaddleBlue,
 			extra = Entity_Extra_Paddle{flags = {.Tilt_Enabled}, size = size},
 			//v-table
 			draw = Paddle_Draw,

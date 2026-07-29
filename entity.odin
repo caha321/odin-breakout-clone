@@ -13,7 +13,6 @@ Entity_Extra :: union {
 
 Entity :: struct {
 	body_id: b2.BodyId,
-	texture: Texture,
 	extra:   Entity_Extra, // by value
 	// v-table
 	update:  proc(e: ^Entity, dt: f32), // called before physics step
