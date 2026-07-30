@@ -177,7 +177,9 @@ check_sensor_events :: proc() {
 		_, ok := Pool_Get(g.entity_pool, event.visitorShapeId)
 		if ok {
 			g.remaining_balls -= 1
-			Pool_Remove(&g.entity_pool, event.sensorShapeId)
+			Pool_Remove(&g.entity_pool, event.visitorShapeId)
+		} else {
+			log.warn("Could not get entity for", event.visitorShapeId)
 		}
 	}
 
