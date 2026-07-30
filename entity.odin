@@ -75,7 +75,7 @@ Entity_Handle :: struct {
 
 Entity_Slot :: struct {
 	entity:     Entity,
-	generation: u32, // even = alive, odd = dead
+	generation: u32, // even = invalid (because of 0), odd = valid
 }
 
 Entity_Pool :: struct {
@@ -83,24 +83,8 @@ Entity_Pool :: struct {
 	free_list: [dynamic]u32, // indices of dead slots ready to use
 }
 
-// set userdata of entities body and shapes to entity ID
-@(private = "file")
-set_user_data :: proc(body_id: b2.BodyId, handle: Entity_Handle) {
-	user_data := entity_handle_to_userdata(handle)
-
-	b2.Body_SetUserData(body_id, user_data)
-
-	@(static) buffer: [8]b2.ShapeId // is currently more than enough
-	assert(b2.Body_GetShapeCount(body_id) <= 8)
-
-	shapes := b2.Body_GetShapes(body_id, buffer[:])
-	for shape_id in shapes {
-		b2.Shape_SetUserData(shape_id, user_data)
-	}
-}
-
-slot_alive :: #force_inline proc(generation: u32) -> bool {
-	return generation % 2 == 0
+slot_valid :: #force_inline proc(generation: u32) -> bool {
+	return generation % 2 == 1
 }
 
 Pool_Add :: proc(pool: ^Entity_Pool, entity: Entity) -> Entity_Handle {
@@ -112,14 +96,16 @@ Pool_Add :: proc(pool: ^Entity_Pool, entity: Entity) -> Entity_Handle {
 		pool.slots[index].generation += 1 // odd = dead, now even = alive
 		log.debug("Reused dead slot", index, "for", entity)
 		handle = {
-			index      = index,
+			index      = index + 1,
 			generation = pool.slots[index].generation,
 		}
-	}
-	append(&pool.slots, Entity_Slot{entity = entity, generation = 0})
-	handle = Entity_Handle {
-		index      = u32(len(pool.slots)),
-		generation = 0,
+	} else {
+		append(&pool.slots, Entity_Slot{entity = entity, generation = 1})
+		log.debug("Appended slot", len(pool.slots), "for", entity)
+		handle = Entity_Handle {
+			index      = u32(len(pool.slots)),
+			generation = 1,
+		}
 	}
 
 	set_user_data(entity.body_id, handle)
@@ -134,24 +120,34 @@ entity_handle_to_index :: #force_inline proc(handle: Entity_Handle) -> int {
 }
 
 Pool_Remove_Handle :: proc(pool: ^Entity_Pool, handle: Entity_Handle) -> bool {
-	if !Pool_IsValid(pool^, handle) do return false
+	if !Pool_IsValid(pool^, handle) {
+		log.warn("Tried to remove with invalid handle", handle)
+		return false
+	}
+	log.debug("Removing", handle, "from pool")
 	index := entity_handle_to_index(handle)
 
 	Entity_Destroy(pool.slots[index].entity)
 
-	pool.slots[index].generation += 1 // invalidate old handles and marks it as dead (odd generation)
+	pool.slots[index].generation += 1 // invalidate old handles and marks it as invalid
 	append(&pool.free_list, u32(index))
 	return true
 }
 
 Pool_Remove_BodyId :: proc(pool: ^Entity_Pool, id: b2.BodyId) -> bool {
-	if !b2.Body_IsValid(id) do return false
+	if !b2.Body_IsValid(id) {
+		log.warn("Tried to remove with invalid body id", id)
+		return false
+	}
 	handle := userdata_to_entity_handle(b2.Body_GetUserData(id))
 	return Pool_Remove_Handle(pool, handle)
 }
 
 Pool_Remove_ShapeId :: proc(pool: ^Entity_Pool, id: b2.ShapeId) -> bool {
-	if !b2.Shape_IsValid(id) do return false
+	if !b2.Shape_IsValid(id) {
+		log.warn("Tried to remove with invalid shape id", id)
+		return false
+	}
 	handle := userdata_to_entity_handle(b2.Shape_GetUserData(id))
 	return Pool_Remove_Handle(pool, handle)
 }
@@ -166,24 +162,33 @@ Pool_IsValid :: proc(pool: Entity_Pool, handle: Entity_Handle) -> bool {
 	index := entity_handle_to_index(handle)
 	return(
 		index < len(pool.slots) &&
-		slot_alive(handle.generation) &&
+		slot_valid(handle.generation) &&
 		pool.slots[index].generation == handle.generation \
 	)
 }
 
 Pool_Get_Handle :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (entity: ^Entity, ok: bool) {
-	if !Pool_IsValid(pool, handle) do return nil, false
+	if !Pool_IsValid(pool, handle) {
+		log.warn("Tried to get with invalid handle", handle)
+		return nil, false
+	}
 	return &pool.slots[entity_handle_to_index(handle)].entity, true
 }
 
 Pool_Get_BodyId :: proc(pool: Entity_Pool, id: b2.BodyId) -> (entity: ^Entity, ok: bool) {
-	if !b2.Body_IsValid(id) do return nil, false
+	if !b2.Body_IsValid(id) {
+		log.warn("Tried to get with invalid body id", id)
+		return nil, false
+	}
 	handle := userdata_to_entity_handle(b2.Body_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
 }
 
 Pool_Get_ShapeId :: proc(pool: Entity_Pool, id: b2.ShapeId) -> (entity: ^Entity, ok: bool) {
-	if !b2.Shape_IsValid(id) do return nil, false
+	if !b2.Shape_IsValid(id) {
+		log.warn("Tried to get with invalid shape id", id)
+		return nil, false
+	}
 	handle := userdata_to_entity_handle(b2.Shape_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
 }
@@ -195,8 +200,9 @@ Pool_Get :: proc {
 }
 
 Pool_Clear :: proc(pool: ^Entity_Pool) {
-	for slot in g.entity_pool.slots {
-		if !slot_alive(slot.generation) do continue
+	log.debug("Clearing Pool...")
+	for slot, index in g.entity_pool.slots {
+		if !slot_valid(slot.generation) do continue
 		Entity_Destroy(slot.entity)
 	}
 	clear(&pool.free_list)
@@ -220,4 +226,20 @@ entity_handle_to_userdata :: #force_inline proc(handle: Entity_Handle) -> rawptr
 @(private = "file")
 userdata_to_entity_handle :: #force_inline proc(p: rawptr) -> Entity_Handle {
 	return transmute(Entity_Handle)p
+}
+
+// set userdata of entities body and shapes to entity ID
+@(private = "file")
+set_user_data :: proc(body_id: b2.BodyId, handle: Entity_Handle) {
+	user_data := entity_handle_to_userdata(handle)
+
+	b2.Body_SetUserData(body_id, user_data)
+
+	@(static) buffer: [8]b2.ShapeId // is currently more than enough
+	assert(b2.Body_GetShapeCount(body_id) <= 8)
+
+	shapes := b2.Body_GetShapes(body_id, buffer[:])
+	for shape_id in shapes {
+		b2.Shape_SetUserData(shape_id, user_data)
+	}
 }

@@ -1,5 +1,6 @@
 package breakout
 
+import "base:intrinsics"
 import "core:log"
 import "core:time"
 import b2 "vendor:box2d"
@@ -80,8 +81,6 @@ game_shutdown :: proc() {
 		}
 	}
 
-	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
-
 	rl.CloseAudioDevice()
 
 	free(g)
@@ -128,6 +127,11 @@ Game_Handle_Input :: proc() {
 	}
 
 	if rl.IsKeyPressed(.F1) do g.draw_b2_debug = !g.draw_b2_debug
+	when ODIN_DEBUG {
+		if rl.IsKeyPressed(.F5) {
+			intrinsics.debug_trap()
+		}
+	}
 }
 
 Game_Update :: proc() {
@@ -141,7 +145,7 @@ Game_Update :: proc() {
 
 	for g.accumulated_time >= DT {
 		for &slot in g.entity_pool.slots {
-			if !slot_alive(slot.generation) do continue
+			if !slot_valid(slot.generation) do continue
 			Entity_Update(&slot.entity, DT)
 		}
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
@@ -198,7 +202,7 @@ Game_Render :: proc() {
 	rl.ClearBackground(BACKGROUND_COLOR)
 
 	for &slot in g.entity_pool.slots {
-		if !slot_alive(slot.generation) do continue
+		if !slot_valid(slot.generation) do continue
 		Entity_Draw(&slot.entity)
 	}
 	ui_draw()
