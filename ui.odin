@@ -30,13 +30,13 @@ ui_draw :: proc() {
 		rl.WHITE,
 	)
 
-
 	rl.DrawText(
 		fmt.ctprintf(
-			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms",
+			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d",
 			rl.GetFPS(),
 			g.update_time_ms,
 			g.render_time_ms,
+			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
 		),
 		BORDER_RIGHT_TEXT_X,
 		10,

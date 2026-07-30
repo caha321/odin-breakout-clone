@@ -19,7 +19,7 @@ Game :: struct {
 	lives:            int, // TODO
 	textures:         [Texture]rl.Texture2D,
 	sounds:           [Sound]rl.Sound,
-	entities:         [dynamic]Entity,
+	entity_pool:      Entity_Pool,
 	remaining_balls:  int,
 	remaining_blocks: int,
 	ball_speed:       f32,
@@ -57,17 +57,14 @@ game_restart :: proc() {
 }
 
 game_clear_entities :: proc() {
-	for &entity in g.entities {
-		Entity_Destroy(&entity)
-	}
-	clear(&g.entities)
+	Pool_Clear(&g.entity_pool)
 
 	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
 }
 
 game_shutdown :: proc() {
 	game_clear_entities()
-	delete(g.entities)
+	Pool_Delete(g.entity_pool)
 
 	for rl_texture, texture in g.textures {
 		if rl.IsTextureValid(rl_texture) {
@@ -143,7 +140,10 @@ Game_Update :: proc() {
 	}
 
 	for g.accumulated_time >= DT {
-		for &entity in g.entities do Entity_Update(&entity, DT)
+		for &slot in g.entity_pool.slots {
+			if !slot.alive do continue
+			Entity_Update(&slot.entity, DT)
+		}
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
 
 		check_sensor_events()
@@ -161,11 +161,11 @@ check_contact_events :: proc() {
 	for i in 0 ..< events.hitCount {
 		hit := events.hitEvents[i]
 
-		entity_a := get_entity(b2.Shape_GetUserData(hit.shapeIdA))
-		if entity_a != nil do Entity_Hit(entity_a, hit)
+		entity, ok := Pool_Get(g.entity_pool, hit.shapeIdA)
+		if ok do Entity_Hit(entity, hit)
 
-		entity_b := get_entity(b2.Shape_GetUserData(hit.shapeIdB))
-		if entity_b != nil do Entity_Hit(entity_b, hit)
+		entity, ok = Pool_Get(g.entity_pool, hit.shapeIdB)
+		if ok do Entity_Hit(entity, hit)
 	}
 }
 
@@ -174,10 +174,10 @@ check_sensor_events :: proc() {
 	for i in 0 ..< events.beginCount {
 		event := events.beginEvents[i]
 
-		entity := get_entity(b2.Shape_GetUserData(event.visitorShapeId))
-		if entity != nil {
+		_, ok := Pool_Get(g.entity_pool, event.visitorShapeId)
+		if ok {
 			g.remaining_balls -= 1
-			Entity_Destroy(entity)
+			Pool_Remove(&g.entity_pool, event.sensorShapeId)
 		}
 	}
 
@@ -195,7 +195,10 @@ Game_Render :: proc() {
 	defer rl.EndDrawing()
 	rl.ClearBackground(BACKGROUND_COLOR)
 
-	for &entity in g.entities do Entity_Draw(&entity)
+	for &slot in g.entity_pool.slots {
+		if !slot.alive do continue
+		Entity_Draw(&slot.entity)
+	}
 	ui_draw()
 
 	if g.draw_b2_debug do b2.World_Draw(g.world_id, &debug_draw)
@@ -207,20 +210,7 @@ Game_Render :: proc() {
 Game_AddEntity :: proc(entity: Entity) {
 	assert(b2.IsValid(entity.body_id))
 
-	user_data_entity_id := entity_index_to_userdata(len(g.entities))
-
-	// set userdata of body and shapes to entity ID
-	b2.Body_SetUserData(entity.body_id, user_data_entity_id)
-
-	buffer: [8]b2.ShapeId
-	shapes := b2.Body_GetShapes(entity.body_id, buffer[:])
-	for shape_id in shapes {
-		b2.Shape_SetUserData(shape_id, user_data_entity_id)
-	}
-
-
 	// inventory
-
 	#partial switch v in entity.variant {
 	case Ball:
 		g.remaining_balls += 1
@@ -228,5 +218,5 @@ Game_AddEntity :: proc(entity: Entity) {
 		g.remaining_blocks += 1
 	}
 
-	append(&g.entities, entity)
+	Pool_Add(&g.entity_pool, entity)
 }

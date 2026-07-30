@@ -105,7 +105,7 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 	g.ball_speed += 0.5
 	if variant.health <= 0 {
 		g.score += int(variant.score_destroy)
-		Entity_Destroy(entity)
+		Pool_Remove(&g.entity_pool, entity.body_id)
 		g.remaining_blocks -= 1
 	}
 }

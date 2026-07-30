@@ -50,6 +50,7 @@ main :: proc() {
 	}
 
 	context.logger = log.create_console_logger(lowest = log_level)
+	defer log.destroy_console_logger(context.logger)
 
 	if !run() {
 		os.exit(1)
