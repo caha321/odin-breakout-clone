@@ -75,8 +75,7 @@ Entity_Handle :: struct {
 
 Entity_Slot :: struct {
 	entity:     Entity,
-	generation: u32,
-	alive:      bool,
+	generation: u32, // even = alive, odd = dead
 }
 
 Entity_Pool :: struct {
@@ -100,20 +99,24 @@ set_user_data :: proc(body_id: b2.BodyId, handle: Entity_Handle) {
 	}
 }
 
+slot_alive :: #force_inline proc(generation: u32) -> bool {
+	return generation % 2 == 0
+}
+
 Pool_Add :: proc(pool: ^Entity_Pool, entity: Entity) -> Entity_Handle {
 	handle: Entity_Handle
 
 	if len(pool.free_list) > 0 {
 		index := pop(&pool.free_list)
 		pool.slots[index].entity = entity
-		pool.slots[index].alive = true
+		pool.slots[index].generation += 1 // odd = dead, now even = alive
 		log.debug("Reused dead slot", index, "for", entity)
 		handle = {
 			index      = index,
 			generation = pool.slots[index].generation,
 		}
 	}
-	append(&pool.slots, Entity_Slot{entity = entity, generation = 0, alive = true})
+	append(&pool.slots, Entity_Slot{entity = entity, generation = 0})
 	handle = Entity_Handle {
 		index      = u32(len(pool.slots)),
 		generation = 0,
@@ -136,8 +139,7 @@ Pool_Remove_Handle :: proc(pool: ^Entity_Pool, handle: Entity_Handle) -> bool {
 
 	Entity_Destroy(pool.slots[index].entity)
 
-	pool.slots[index].alive = false
-	pool.slots[index].generation += 1 // invalidate old handles
+	pool.slots[index].generation += 1 // invalidate old handles and marks it as dead (odd generation)
 	append(&pool.free_list, u32(index))
 	return true
 }
@@ -164,7 +166,7 @@ Pool_IsValid :: proc(pool: Entity_Pool, handle: Entity_Handle) -> bool {
 	index := entity_handle_to_index(handle)
 	return(
 		index < len(pool.slots) &&
-		pool.slots[index].alive &&
+		slot_alive(handle.generation) &&
 		pool.slots[index].generation == handle.generation \
 	)
 }
@@ -194,7 +196,7 @@ Pool_Get :: proc {
 
 Pool_Clear :: proc(pool: ^Entity_Pool) {
 	for slot in g.entity_pool.slots {
-		if !slot.alive do continue
+		if !slot_alive(slot.generation) do continue
 		Entity_Destroy(slot.entity)
 	}
 	clear(&pool.free_list)
@@ -205,6 +207,10 @@ Pool_Delete :: proc(pool: Entity_Pool) {
 	delete(pool.free_list)
 	delete(pool.slots)
 }
+
+// make sure our handle fits into user data "pointer"
+// we transmute, so they must be exactly the same size
+#assert(size_of(Entity_Handle) == size_of(rawptr))
 
 @(private = "file")
 entity_handle_to_userdata :: #force_inline proc(handle: Entity_Handle) -> rawptr {

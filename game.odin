@@ -141,7 +141,7 @@ Game_Update :: proc() {
 
 	for g.accumulated_time >= DT {
 		for &slot in g.entity_pool.slots {
-			if !slot.alive do continue
+			if !slot_alive(slot.generation) do continue
 			Entity_Update(&slot.entity, DT)
 		}
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
@@ -196,7 +196,7 @@ Game_Render :: proc() {
 	rl.ClearBackground(BACKGROUND_COLOR)
 
 	for &slot in g.entity_pool.slots {
-		if !slot.alive do continue
+		if !slot_alive(slot.generation) do continue
 		Entity_Draw(&slot.entity)
 	}
 	ui_draw()

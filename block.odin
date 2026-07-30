@@ -4,7 +4,7 @@ import "core:log"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
-Block_Kind :: enum {
+Block_Kind :: enum u8 {
 	Red,
 	Blue,
 	Green,

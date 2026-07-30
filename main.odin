@@ -45,6 +45,11 @@ main :: proc() {
 			mem.tracking_allocator_destroy(&track)
 		}
 		log_level :: log.Level.Debug
+
+		print_struct_field_sizes(Entity)
+		print_union_variant_sizes(Entity_Variant)
+		print_struct_field_sizes(Entity_Slot)
+		print_struct_field_sizes(Entity_Handle)
 	} else {
 		log_level :: log.Level.Info
 	}

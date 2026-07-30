@@ -10,7 +10,7 @@ import rl "vendor:raylib"
 BALL_RADIUS :: f32(1)
 BALL_SPEED_INITIAL :: f32(25)
 
-Ball_Kind :: enum {
+Ball_Kind :: enum u8 {
 	Blue,
 	Grey,
 }

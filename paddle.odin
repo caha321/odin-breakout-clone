@@ -14,7 +14,7 @@ PADDLE_TILT_SENSITIVITY :: f32(0.02) // radians of tilt per unit of vx
 PADDLE_TILT_VX_STOP_THRESHOLD :: f32(0.05) // below this speed, considered "stopped"
 PADDLE_TILT_ANGULAR_GAIN :: f32(12) // how snappily rotation chases its target
 
-Paddle_Flag :: enum {
+Paddle_Flag :: enum u8 {
 	Tilt_Enabled,
 	Sticky, // TODO
 }
@@ -22,7 +22,7 @@ Paddle_Flag :: enum {
 Paddle_Flags :: bit_set[Paddle_Flag]
 
 // TODO Change paddle size via power"up"
-Paddle_Size :: enum {
+Paddle_Size :: enum u8 {
 	Normal, // default
 	Small,
 	Wide,
