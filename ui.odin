@@ -1,6 +1,7 @@
 package breakout
 
 import "core:fmt"
+import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 
@@ -32,11 +33,12 @@ ui_draw :: proc() {
 
 	rl.DrawText(
 		fmt.ctprintf(
-			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d",
+			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\nb2 Bytes: %d",
 			rl.GetFPS(),
 			g.update_time_ms,
 			g.render_time_ms,
 			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
+			b2.GetByteCount(),
 		),
 		BORDER_RIGHT_TEXT_X,
 		10,

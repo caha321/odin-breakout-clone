@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:os"
+import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 DT :: 1.0 / 60.0
@@ -60,4 +61,6 @@ main :: proc() {
 	if !run() {
 		os.exit(1)
 	}
+
+	log.debug("Box2D ByteCount:", b2.GetByteCount())
 }
