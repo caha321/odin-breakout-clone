@@ -182,6 +182,8 @@ check_sensor_events :: proc() {
 		if ok {
 			g.remaining_balls -= 1
 			Pool_Remove(&g.entity_pool, event.visitorShapeId)
+			// only play sound if it does not overlap with game over sound
+			if g.remaining_balls > 0 do rl.PlaySound(g.sounds[.BallLost])
 		} else {
 			log.warn("Could not get entity for", event.visitorShapeId)
 		}

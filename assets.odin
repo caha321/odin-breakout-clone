@@ -12,6 +12,8 @@ Sound :: enum {
 	HitWall,
 	GameStart,
 	GameOver,
+	BallLost,
+	PowerupCollected,
 }
 
 // all available textures in the game
@@ -45,6 +47,8 @@ load_assets :: proc() -> bool {
 	load_sound("assets/impactMetal_medium_004.ogg", .HitWall) or_return
 	load_sound("assets/jingles_PIZZI02.ogg", .GameStart) or_return
 	load_sound("assets/jingles_PIZZI01.ogg", .GameOver) or_return
+	load_sound("assets/lowDown.ogg", .BallLost) or_return
+	load_sound("assets/powerUp2.ogg", .PowerupCollected) or_return
 
 	return true
 }
