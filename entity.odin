@@ -113,19 +113,19 @@ Pool_Add :: proc(pool: ^Entity_Pool, entity: Entity) -> Entity_Handle {
 }
 
 @(private = "file")
-entity_handle_to_index :: #force_inline proc(handle: Entity_Handle) -> int {
-	index := int(handle.index) - 1 // indices stored as +1, since 0 is always invalid
-	assert(index >= 0)
-	return index
+entity_handle_to_index :: #force_inline proc(handle: Entity_Handle) -> (index: int, ok: bool) {
+	index = int(handle.index) - 1 // indices stored as +1, since 0 is always invalid
+	ok = index >= 0
+	return
 }
 
 Pool_Remove_Handle :: proc(pool: ^Entity_Pool, handle: Entity_Handle) -> bool {
-	if !Pool_IsValid(pool^, handle) {
+	index, ok := Pool_GetValidIndex(pool^, handle)
+	if !ok {
 		log.warn("Tried to remove with invalid handle", handle)
 		return false
 	}
 	log.debug("Removing", handle, "from pool")
-	index := entity_handle_to_index(handle)
 
 	Entity_Destroy(pool.slots[index].entity)
 
@@ -158,21 +158,25 @@ Pool_Remove :: proc {
 	Pool_Remove_ShapeId,
 }
 
-Pool_IsValid :: proc(pool: Entity_Pool, handle: Entity_Handle) -> bool {
-	index := entity_handle_to_index(handle)
-	return(
-		index < len(pool.slots) &&
-		slot_valid(handle.generation) &&
-		pool.slots[index].generation == handle.generation \
-	)
+@(private = "file")
+Pool_GetValidIndex :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (index: int, ok: bool) {
+	index, ok = entity_handle_to_index(handle)
+	if !ok do return
+	ok =
+		(index < len(pool.slots) &&
+			slot_valid(handle.generation) &&
+			pool.slots[index].generation == handle.generation)
+	return
 }
 
 Pool_Get_Handle :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (entity: ^Entity, ok: bool) {
-	if !Pool_IsValid(pool, handle) {
+	index: int
+	index, ok = Pool_GetValidIndex(pool, handle)
+	if !ok {
 		log.warn("Tried to get with invalid handle", handle)
 		return nil, false
 	}
-	return &pool.slots[entity_handle_to_index(handle)].entity, true
+	return &pool.slots[index].entity, true
 }
 
 Pool_Get_BodyId :: proc(pool: Entity_Pool, id: b2.BodyId) -> (entity: ^Entity, ok: bool) {
@@ -201,7 +205,7 @@ Pool_Get :: proc {
 
 Pool_Clear :: proc(pool: ^Entity_Pool) {
 	log.debug("Clearing Pool...")
-	for slot, index in g.entity_pool.slots {
+	for slot, index in pool.slots {
 		if !slot_valid(slot.generation) do continue
 		Entity_Destroy(slot.entity)
 	}
@@ -235,11 +239,216 @@ set_user_data :: proc(body_id: b2.BodyId, handle: Entity_Handle) {
 
 	b2.Body_SetUserData(body_id, user_data)
 
-	@(static) buffer: [8]b2.ShapeId // is currently more than enough
+	buffer: [8]b2.ShapeId // is currently more than enough
 	assert(b2.Body_GetShapeCount(body_id) <= 8)
 
 	shapes := b2.Body_GetShapes(body_id, buffer[:])
 	for shape_id in shapes {
 		b2.Shape_SetUserData(shape_id, user_data)
 	}
+}
+
+
+// ---- test helpers ----
+
+import "core:sync"
+import "core:testing"
+
+@(private = "file")
+g_world_mutex: sync.Mutex // Creating/destroying worlds is NOT thread safe :)
+
+@(private = "file")
+make_test_world :: proc() -> b2.WorldId {
+	sync.mutex_lock(&g_world_mutex)
+	defer sync.mutex_unlock(&g_world_mutex)
+
+	def := b2.DefaultWorldDef()
+	return b2.CreateWorld(def)
+}
+
+@(private = "file")
+destroy_test_world :: proc(world: b2.WorldId) {
+	sync.mutex_lock(&g_world_mutex)
+	defer sync.mutex_unlock(&g_world_mutex)
+	b2.DestroyWorld(world)
+}
+
+@(private = "file")
+make_test_entity :: proc(world: b2.WorldId) -> Entity {
+	def := b2.DefaultBodyDef()
+	body_id := b2.CreateBody(world, def)
+	return Entity{body_id = body_id, variant = Wall{}} // pick whatever cheap variant
+}
+
+// ---- tests ----
+
+@(test)
+test_pool_add_returns_valid_handle :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e := make_test_entity(world)
+	h := Pool_Add(&pool, e)
+
+	testing.expect(t, h.index != 0, "handle index should never be 0 for a valid add")
+	testing.expect(t, h.generation != 0, "handle generation should never be 0 for a valid add")
+	index, ok := Pool_GetValidIndex(pool, h)
+	testing.expect(t, ok, "freshly added handle should be valid")
+	testing.expect(
+		t,
+		u32(index + 1) == h.index,
+		"handle index should be +1 to account for 0=invalid",
+	)
+	testing.expect(t, pool.slots[index].generation == h.generation)
+
+	entity: ^Entity
+	entity, ok = Pool_Get(pool, h)
+	testing.expect(t, ok, "Pool_Get should succeed for a valid handle")
+	testing.expect(t, entity.body_id == e.body_id, "returned entity should match what was added")
+}
+
+@(test)
+test_pool_add_twice_gives_distinct_handles :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e1 := make_test_entity(world)
+	e2 := make_test_entity(world)
+
+	h1 := Pool_Add(&pool, e1)
+	h2 := Pool_Add(&pool, e2)
+
+	testing.expect(t, h1.index != h2.index, "two distinct adds must get distinct slots")
+	testing.expect(t, len(pool.slots) == 2, "exactly 2 slots should exist after 2 adds")
+
+	ent1, ok1 := Pool_Get(pool, h1)
+	ent2, ok2 := Pool_Get(pool, h2)
+	testing.expect(t, ok1 && ok2, "both handles should resolve")
+	testing.expect(t, ent1.body_id != ent2.body_id, "the two entities must not share a body_id")
+}
+
+@(test)
+test_pool_remove_invalidates_handle :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e := make_test_entity(world)
+	h := Pool_Add(&pool, e)
+
+	ok := Pool_Remove(&pool, h)
+	testing.expect(t, ok, "removing a valid handle should succeed")
+	_, ok = Pool_GetValidIndex(pool, h)
+	testing.expect(t, !ok, "handle should be invalid after removal")
+
+	_, ok = Pool_Get(pool, h)
+	testing.expect(t, !ok, "Pool_Get should fail on a removed handle")
+}
+
+@(test)
+test_pool_reuses_freed_slot_with_bumped_generation :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e1 := make_test_entity(world)
+	h1 := Pool_Add(&pool, e1)
+	Pool_Remove(&pool, h1)
+
+	e2 := make_test_entity(world)
+	h2 := Pool_Add(&pool, e2)
+
+	testing.expect(t, len(pool.slots) == 1, "freed slot should be reused, not grow the array")
+	testing.expect(t, h2.index == h1.index, "reused slot should have the same index")
+	testing.expect(t, h2.generation != h1.generation, "reused slot must get a new generation")
+	_, ok := Pool_GetValidIndex(pool, h1)
+	testing.expect(t, !ok, "old handle must stay invalid after slot reuse")
+	_, ok = Pool_GetValidIndex(pool, h2)
+	testing.expect(t, ok, "new handle for the reused slot must be valid")
+}
+
+@(test)
+test_stale_handle_never_aliases_new_entity :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e1 := make_test_entity(world)
+	h1 := Pool_Add(&pool, e1)
+	Pool_Remove(&pool, h1)
+
+	e2 := make_test_entity(world)
+	h2 := Pool_Add(&pool, e2)
+
+	// old handle must NOT resolve to the new entity, even though it may
+	// reuse the same slot index
+	entity_via_stale, ok := Pool_Get(pool, h1)
+	testing.expect(t, !ok, "stale handle must not resolve at all")
+}
+
+@(test)
+test_pool_get_by_body_id_matches_handle :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e := make_test_entity(world)
+	h := Pool_Add(&pool, e)
+
+	entity, ok := Pool_Get(pool, e.body_id)
+	testing.expect(t, ok, "Pool_Get by body_id should succeed")
+	testing.expect(t, entity.body_id == e.body_id)
+
+	got_handle_entity, _ := Pool_Get(pool, h)
+	testing.expect(t, entity == got_handle_entity, "both lookup paths must return the same slot")
+}
+
+@(test)
+test_pool_clear_invalidates_everything :: proc(t: ^testing.T) {
+	world := make_test_world()
+	defer destroy_test_world(world)
+
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	e1 := make_test_entity(world)
+	e2 := make_test_entity(world)
+	h1 := Pool_Add(&pool, e1)
+	h2 := Pool_Add(&pool, e2)
+
+	Pool_Clear(&pool)
+
+	_, ok := Pool_GetValidIndex(pool, h1)
+	testing.expect(t, !ok)
+	_, ok = Pool_GetValidIndex(pool, h2)
+	testing.expect(t, !ok)
+	testing.expect(t, len(pool.slots) == 0)
+	testing.expect(t, len(pool.free_list) == 0)
+}
+
+@(test)
+test_handle_zero_index_always_invalid :: proc(t: ^testing.T) {
+	pool: Entity_Pool
+	defer Pool_Delete(pool)
+
+	zero_handle := Entity_Handle {
+		index      = 0,
+		generation = 1,
+	}
+	_, ok := Pool_GetValidIndex(pool, zero_handle)
+	testing.expect(t, !ok, "index 0 must always be invalid")
 }
