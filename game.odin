@@ -178,14 +178,38 @@ check_sensor_events :: proc() {
 	for i in 0 ..< events.beginCount {
 		event := events.beginEvents[i]
 
-		_, ok := Pool_Get(g.entity_pool, event.visitorShapeId)
-		if ok {
+		sensor_entity, ok := Pool_Get(g.entity_pool, event.sensorShapeId)
+		if !ok {
+			log.warn("Could not get entity for sensor shape", event.sensorShapeId)
+			continue
+		}
+		visitor_entity: ^Entity
+		visitor_entity, ok = Pool_Get(g.entity_pool, event.visitorShapeId)
+		if !ok {
+			log.warn("Could not get entity for visitor shape", event.visitorShapeId)
+			continue
+		}
+
+		#partial switch &v in visitor_entity.variant {
+		case Ball:
+			if sensor_entity.variant != nil do break // ground sensor is nil
 			g.remaining_balls -= 1
 			Pool_Remove(&g.entity_pool, event.visitorShapeId)
 			// only play sound if it does not overlap with game over sound
 			if g.remaining_balls > 0 do rl.PlaySound(g.sounds[.BallLost])
-		} else {
-			log.warn("Could not get entity for", event.visitorShapeId)
+
+		case Paddle:
+			powerup: Powerup
+			powerup, ok = sensor_entity.variant.(Powerup)
+			if !ok do break
+
+			Paddle_ApplyPowerup(visitor_entity, &v, powerup.kind)
+			rl.PlaySound(g.sounds[.PowerupCollected])
+			Pool_Remove(&g.entity_pool, event.sensorShapeId) // powerup is the sensor
+
+		case Powerup:
+			// clean up missed powerups
+			Pool_Remove(&g.entity_pool, event.visitorShapeId) // powerup is the visitor
 		}
 	}
 

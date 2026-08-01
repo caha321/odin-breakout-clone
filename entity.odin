@@ -9,6 +9,7 @@ Entity_Variant :: union {
 	Block,
 	Paddle,
 	Wall,
+	Powerup,
 }
 
 Entity :: struct {
@@ -26,6 +27,8 @@ Entity_Draw :: proc(entity: ^Entity) {
 		Paddle_Draw(entity, v)
 	case Wall:
 		break
+	case Powerup:
+		Powerup_Draw(entity, v)
 	}
 }
 
@@ -38,6 +41,8 @@ Entity_Update :: proc(entity: ^Entity, dt: f32) {
 	case Block:
 		break
 	case Wall:
+		break
+	case Powerup:
 		break
 	}
 }
@@ -52,6 +57,8 @@ Entity_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
 		Paddle_Hit(entity, hit)
 	case Wall:
 		Wall_Hit(entity, hit)
+	case Powerup:
+		break
 	}
 }
 

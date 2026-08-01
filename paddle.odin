@@ -21,7 +21,6 @@ Paddle_Flag :: enum u8 {
 
 Paddle_Flags :: bit_set[Paddle_Flag]
 
-// TODO Change paddle size via power"up"
 Paddle_Size :: enum u8 {
 	Normal, // default
 	Small,
@@ -44,6 +43,7 @@ Paddle_Create :: proc(size: Paddle_Size = .Normal) {
 	shape_def := b2.DefaultShapeDef()
 	shape_def.material.friction = 0.3
 	shape_def.enableHitEvents = true
+	shape_def.enableSensorEvents = true // for powerups
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
 	Game_AddEntity({body_id = body_id, variant = Paddle{flags = {.Tilt_Enabled}, size = size}})
@@ -113,6 +113,23 @@ Paddle_SetSize :: proc(entity: ^Entity, variant: ^Paddle, size: Paddle_Size) {
 	assert(len(shapes) > 0)
 
 	b2.Shape_SetCapsule(shapes[0], paddle_capsule(size))
+}
+
+Paddle_ApplyPowerup :: proc(entity: ^Entity, variant: ^Paddle, powerup: Powerup_Kind) {
+	log.debug("Applying", powerup)
+
+	switch powerup {
+	case .PaddleSmall:
+		Paddle_SetSize(entity, variant, .Small)
+	case .PaddleWide:
+		Paddle_SetSize(entity, variant, .Wide)
+	case .ExtraBall:
+		position := b2.Body_GetPosition(entity.body_id)
+		position.y += 5
+		Ball_Create(position, kind = .Blue)
+	case .Invalid:
+		log.warn("Cannot apply", powerup)
+	}
 }
 
 paddle_capsule :: proc(size: Paddle_Size) -> b2.Capsule {
