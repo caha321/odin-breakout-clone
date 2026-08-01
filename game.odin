@@ -203,6 +203,16 @@ check_contact_events :: proc() {
 		entity, ok = Pool_Get(g.entity_pool, hit.shapeIdB)
 		if ok do Entity_Hit(entity, hit)
 	}
+
+	for i in 0 ..< events.beginCount { 	// contact begin events
+		event := events.beginEvents[i]
+
+		entity_a := Pool_Get(g.entity_pool, event.shapeIdA) or_continue
+		entity_b := Pool_Get(g.entity_pool, event.shapeIdB) or_continue
+
+		try_attach_ball(entity_a, entity_b)
+		try_attach_ball(entity_b, entity_a)
+	}
 }
 
 check_sensor_events :: proc() {

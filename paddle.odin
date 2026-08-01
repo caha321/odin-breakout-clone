@@ -16,7 +16,7 @@ PADDLE_TILT_ANGULAR_GAIN :: f32(12) // how snappily rotation chases its target
 
 Paddle_Flag :: enum u8 {
 	Tilt_Enabled,
-	Sticky, // TODO
+	Sticky,
 }
 
 Paddle_Flags :: bit_set[Paddle_Flag]
@@ -43,10 +43,11 @@ Paddle_Create :: proc(size: Paddle_Size = .Normal) {
 	shape_def := b2.DefaultShapeDef()
 	shape_def.material.friction = 0.3
 	shape_def.enableHitEvents = true
+	shape_def.enableContactEvents = true // for sticky
 	shape_def.enableSensorEvents = true // for powerups
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
-	Game_AddEntity({body_id = body_id, variant = Paddle{flags = {.Tilt_Enabled}, size = size}})
+	Game_AddEntity({body_id = body_id, variant = Paddle{}})
 }
 
 // Call once per fixed physics step, BEFORE b2.World_Step
@@ -127,6 +128,10 @@ Paddle_ApplyPowerup :: proc(entity: ^Entity, variant: ^Paddle, powerup: Powerup_
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y += 5
 		Ball_Create(position, kind = .Blue)
+	case .PaddleSticky:
+		variant.flags += {.Sticky}
+	case .PaddleTilt:
+		variant.flags += {.Tilt_Enabled}
 	case .Invalid:
 		log.warn("Cannot apply", powerup)
 	}

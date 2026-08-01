@@ -33,9 +33,9 @@ Entity_Draw :: proc(entity: ^Entity) {
 }
 
 Entity_Update :: proc(entity: ^Entity, dt: f32) {
-	switch v in entity.variant {
+	switch &v in entity.variant {
 	case Ball:
-		Ball_Update(entity, dt)
+		Ball_Update(entity, &v, dt)
 	case Paddle:
 		Paddle_Update(entity, v, dt)
 	case Block:
@@ -179,27 +179,18 @@ Pool_GetValidIndex :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (index: 
 Pool_Get_Handle :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (entity: ^Entity, ok: bool) {
 	index: int
 	index, ok = Pool_GetValidIndex(pool, handle)
-	if !ok {
-		log.warn("Tried to get with invalid handle", handle)
-		return nil, false
-	}
+	if !ok do return nil, false
 	return &pool.slots[index].entity, true
 }
 
 Pool_Get_BodyId :: proc(pool: Entity_Pool, id: b2.BodyId) -> (entity: ^Entity, ok: bool) {
-	if !b2.Body_IsValid(id) {
-		log.warn("Tried to get with invalid body id", id)
-		return nil, false
-	}
+	if !b2.Body_IsValid(id) do return nil, false
 	handle := userdata_to_entity_handle(b2.Body_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
 }
 
 Pool_Get_ShapeId :: proc(pool: Entity_Pool, id: b2.ShapeId) -> (entity: ^Entity, ok: bool) {
-	if !b2.Shape_IsValid(id) {
-		log.warn("Tried to get with invalid shape id", id)
-		return nil, false
-	}
+	if !b2.Shape_IsValid(id) do return nil, false
 	handle := userdata_to_entity_handle(b2.Shape_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
 }

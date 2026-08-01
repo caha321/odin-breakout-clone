@@ -6,13 +6,23 @@ import rl "vendor:raylib"
 
 Powerup_Kind :: enum u8 {
 	Invalid,
+	ExtraBall,
 	PaddleSmall,
 	PaddleWide,
-	ExtraBall,
+	PaddleSticky,
+	PaddleTilt,
 }
 
 // weighted table, paddle small & wide kinds are twice as likely
-POWERUP_KINDS := []Powerup_Kind{.PaddleSmall, .PaddleSmall, .PaddleWide, .PaddleWide, .ExtraBall}
+POWERUP_KINDS := []Powerup_Kind {
+	.ExtraBall,
+	.PaddleSmall,
+	.PaddleSmall,
+	.PaddleWide,
+	.PaddleWide,
+	.PaddleSticky,
+	.PaddleTilt,
+}
 
 Powerup :: struct {
 	kind: Powerup_Kind,
@@ -52,18 +62,22 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 // TODO proper textures
 @(private = "file")
 kind_to_color := [Powerup_Kind]rl.Color {
-	.Invalid     = rl.PINK,
-	.PaddleSmall = rl.RED,
-	.PaddleWide  = rl.GREEN,
-	.ExtraBall   = rl.BLUE,
+	.Invalid      = rl.PINK,
+	.ExtraBall    = rl.BLUE,
+	.PaddleSmall  = rl.RED,
+	.PaddleWide   = rl.GREEN,
+	.PaddleSticky = rl.LIME,
+	.PaddleTilt   = rl.PINK,
 }
 
 @(private = "file")
 kind_to_text := [Powerup_Kind]cstring {
-	.Invalid     = "X",
-	.PaddleSmall = "-",
-	.PaddleWide  = "+",
-	.ExtraBall   = "B",
+	.Invalid      = "X",
+	.PaddleSmall  = "-",
+	.PaddleWide   = "+",
+	.ExtraBall    = "B",
+	.PaddleSticky = "S",
+	.PaddleTilt   = "T",
 }
 
 Powerup_Draw :: proc(entity: ^Entity, variant: Powerup) {
