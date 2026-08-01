@@ -20,6 +20,7 @@ Game :: struct {
 	lives:            int, // TODO
 	textures:         [Texture]rl.Texture2D,
 	sounds:           [Sound]rl.Sound,
+	music:            [Music]rl.Music,
 	entity_pool:      Entity_Pool,
 	remaining_balls:  int,
 	remaining_blocks: int,
@@ -41,6 +42,21 @@ game_init :: proc() -> bool {
 	g = new(Game)
 	load_assets() or_return
 	game_update_state(.New)
+
+	return true
+}
+
+Game_Run :: proc() -> bool {
+	game_init() or_return
+	defer game_shutdown()
+
+	rl.PlayMusicStream(g.music[.Game])
+	rl.SetMusicVolume(g.music[.Game], 0.4) // TODI via Options menu
+
+	for !rl.WindowShouldClose() {
+		Game_Update()
+		Game_Render()
+	}
 
 	return true
 }
@@ -138,6 +154,7 @@ Game_Update :: proc() {
 	update_start := time.tick_now()
 
 	Game_Handle_Input()
+	rl.UpdateMusicStream(g.music[.Game])
 
 	if g.state == .Running {
 		g.accumulated_time += rl.GetFrameTime()

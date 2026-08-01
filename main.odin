@@ -18,15 +18,7 @@ run :: proc() -> bool {
 
 	rl.SetTargetFPS(75)
 
-	game_init() or_return
-	defer game_shutdown()
-
-	for !rl.WindowShouldClose() {
-		Game_Update()
-		Game_Render()
-	}
-
-	return true
+	return Game_Run()
 }
 
 
