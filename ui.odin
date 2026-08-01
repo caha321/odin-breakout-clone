@@ -8,29 +8,69 @@ import rl "vendor:raylib"
 BORDER_WIDTH :: (ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * PPM / 2
 BORDER_COLOR :: rl.BLACK
 
-BORDER_RIGHT_TEXT_X :: BORDER_WIDTH + (ARENA_HALF_WIDTH * 2 * PPM)
+UI_TEXT_Y :: 10
+UI_TEXT_X_BORDER_LEFT :: 10
+UI_TEXT_X_BORDER_RIGHT :: BORDER_WIDTH + (ARENA_HALF_WIDTH * 2 * PPM)
+UI_TEXT_X_OFFSET :: BORDER_WIDTH - 30
 
+UI_FONT_SIZE :: 40
+UI_FONT_COLOR :: rl.WHITE
+
+score_counter := Counter_Create(
+	UI_FONT_COLOR,
+	UI_FONT_SIZE,
+	on_increase = {Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {Effect_Pulse{color = rl.RED}},
+)
+
+time_counter := Counter_Create(
+	UI_FONT_COLOR,
+	UI_FONT_SIZE,
+	on_increase = {Effect_Pop{}, Effect_Pulse{color = rl.GRAY}},
+)
+
+ball_counter := Counter_Create(
+	UI_FONT_COLOR,
+	UI_FONT_SIZE,
+	on_increase = {Effect_Pop{}, Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {Effect_Shake{duration = 1, strength = 3}, Effect_Pulse{color = rl.RED}},
+)
+
+block_counter := Counter_Create(
+	UI_FONT_COLOR,
+	UI_FONT_SIZE,
+	on_decrease = {Effect_Shake{duration = .25, strength = 2}, Effect_Pulse{color = rl.GREEN}},
+)
+
+UI_Update :: proc(dt: f32) {
+	Counter_Update(&score_counter, g.score, dt)
+	Counter_Update(&time_counter, i32(g.elapsed_time), dt)
+	Counter_Update(&ball_counter, g.remaining_balls, dt)
+	Counter_Update(&block_counter, g.remaining_blocks, dt)
+}
 
 ui_draw :: proc() {
 	// borders
 	rl.DrawRectangle(0, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Left
 	rl.DrawRectangle(SCREEN_WIDTH - BORDER_WIDTH, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Right
 
-	rl.DrawText(
-		fmt.ctprintf(
-			"SCORE: %5d\nLIVES: %2d\n\nB.SPEED: %3d\n\nR.BALLS: %2d\nR.BLOCKS: %3d\n\nTIME: %.1f",
-			g.score,
-			g.lives,
-			int(g.ball_speed),
-			g.remaining_balls,
-			g.remaining_blocks,
-			g.elapsed_time,
-		),
-		10,
-		10,
-		40,
-		rl.WHITE,
-	)
+
+	text_y: i32 = UI_TEXT_Y
+	rl.DrawText("SCORE", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
+	Counter_Draw(&score_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%5d", .Right)
+
+	text_y += UI_FONT_SIZE
+	rl.DrawText("BALLS", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
+	Counter_Draw(&ball_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%2d", .Right)
+
+	text_y += UI_FONT_SIZE
+	rl.DrawText("BLOCKS", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
+	Counter_Draw(&block_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%2d", .Right)
+
+	text_y += UI_FONT_SIZE
+	rl.DrawText("TIME", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
+	Counter_Draw(&time_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%3d", .Right)
+
 
 	rl.DrawText(
 		fmt.ctprintf(
@@ -41,7 +81,7 @@ ui_draw :: proc() {
 			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
 			b2.GetByteCount(),
 		),
-		BORDER_RIGHT_TEXT_X,
+		UI_TEXT_X_BORDER_RIGHT,
 		10,
 		20,
 		rl.WHITE,

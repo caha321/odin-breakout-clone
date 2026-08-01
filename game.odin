@@ -16,14 +16,14 @@ Game_State :: enum {
 
 Game :: struct {
 	state:            Game_State,
-	score:            int,
-	lives:            int, // TODO
+	score:            i32,
+	lives:            i32, // TODO
 	textures:         [Texture]rl.Texture2D,
 	sounds:           [Sound]rl.Sound,
 	music:            [Music]rl.Music,
 	entity_pool:      Entity_Pool,
-	remaining_balls:  int,
-	remaining_blocks: int,
+	remaining_balls:  i32,
+	remaining_blocks: i32,
 	ball_speed:       f32,
 	elapsed_time:     f32, // accumulates frame times while game is running
 	// physics stuff
@@ -167,8 +167,10 @@ Game_Update :: proc() {
 	Game_Handle_Input()
 	rl.UpdateMusicStream(g.music[.Game])
 
+	frame_time := rl.GetFrameTime()
+	UI_Update(frame_time)
+
 	if g.state == .Running {
-		frame_time := rl.GetFrameTime()
 		g.accumulated_time += frame_time
 		g.elapsed_time += frame_time
 	}

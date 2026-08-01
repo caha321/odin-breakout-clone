@@ -102,10 +102,10 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 	log.debug("Block hit", entity)
 	play_hit_sound(.HitBlock, hit)
 	variant.health -= 1
-	g.score += int(variant.score_hit)
+	g.score += i32(variant.score_hit)
 	g.ball_speed += 0.5
 	if variant.health <= 0 {
-		g.score += int(variant.score_destroy)
+		g.score += i32(variant.score_destroy)
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y -= 5
 		Pool_Remove(&g.entity_pool, entity.body_id)
