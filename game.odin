@@ -25,6 +25,7 @@ Game :: struct {
 	remaining_balls:  int,
 	remaining_blocks: int,
 	ball_speed:       f32,
+	elapsed_time:     f32, // accumulates frame times while game is running
 	// physics stuff
 	world_id:         b2.WorldId,
 	draw_b2_debug:    bool,
@@ -67,6 +68,7 @@ Game_Run :: proc() -> bool {
 // Restart game, resets all state to initial values
 game_restart :: proc() {
 	g.score = 0
+	g.elapsed_time = 0
 	g.ball_speed = BALL_SPEED_INITIAL
 	game_clear_entities()
 	g.remaining_balls = 0
@@ -166,7 +168,9 @@ Game_Update :: proc() {
 	rl.UpdateMusicStream(g.music[.Game])
 
 	if g.state == .Running {
-		g.accumulated_time += rl.GetFrameTime()
+		frame_time := rl.GetFrameTime()
+		g.accumulated_time += frame_time
+		g.elapsed_time += frame_time
 	}
 
 	for g.accumulated_time >= DT {

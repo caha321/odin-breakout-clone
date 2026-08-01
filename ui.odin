@@ -18,12 +18,13 @@ ui_draw :: proc() {
 
 	rl.DrawText(
 		fmt.ctprintf(
-			"SCORE: %5d\nLIVES: %2d\n\nB.SPEED: %3d\n\nR.BALLS: %2d\nR.BLOCKS: %3d",
+			"SCORE: %5d\nLIVES: %2d\n\nB.SPEED: %3d\n\nR.BALLS: %2d\nR.BLOCKS: %3d\n\nTIME: %.1f",
 			g.score,
 			g.lives,
 			int(g.ball_speed),
 			g.remaining_balls,
 			g.remaining_blocks,
+			g.elapsed_time,
 		),
 		10,
 		10,
