@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "core:math/rand"
 import b2 "vendor:box2d"

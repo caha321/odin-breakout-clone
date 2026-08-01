@@ -1,4 +1,4 @@
-package breakout
+package main
 
 import "core:fmt"
 import "core:log"
@@ -7,18 +7,18 @@ import "core:os"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
-DT :: 1.0 / 60.0
-SUB_STEP_COUNT :: 4 // Box2D
+import "src/engine"
+import "src/game"
 
 run :: proc() -> bool {
 	rl.SetTraceLogLevel(.WARNING)
 	rl.SetConfigFlags({.VSYNC_HINT})
-	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout!")
+	rl.InitWindow(game.SCREEN_WIDTH, game.SCREEN_HEIGHT, "Breakout!")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(75)
 
-	return Game_Run()
+	return game.Game_Run()
 }
 
 
@@ -41,10 +41,10 @@ main :: proc() {
 		}
 		log_level :: log.Level.Debug
 
-		print_struct_field_sizes(Entity)
-		print_union_variant_sizes(Entity_Variant)
-		print_struct_field_sizes(Entity_Slot)
-		print_struct_field_sizes(Entity_Handle)
+		print_struct_field_sizes(game.Entity)
+		print_union_variant_sizes(game.Entity_Variant)
+		print_struct_field_sizes(engine.Slot(game.Entity))
+		print_struct_field_sizes(engine.Handle)
 	} else {
 		log_level :: log.Level.Info
 	}
@@ -57,4 +57,37 @@ main :: proc() {
 	}
 
 	log.debug("Box2D ByteCount:", b2.GetByteCount())
+}
+
+
+//////////////////////////
+
+import "base:runtime"
+
+print_union_variant_sizes :: proc($T: typeid) {
+	info := type_info_of(T)
+	// strip named wrapper if present, to get to the actual union info
+	ti := runtime.type_info_base(info)
+
+	u, ok := ti.variant.(runtime.Type_Info_Union)
+	if !ok {
+		fmt.println(type_info_of(T), "is not a union")
+		return
+	}
+
+	fmt.printfln("%v total size: %d, align: %d", type_info_of(T), info.size, info.align)
+	for variant in u.variants {
+		fmt.printfln("  %v: size = %d, align = %d", variant, variant.size, variant.align)
+	}
+}
+
+print_struct_field_sizes :: proc($T: typeid) {
+	info := runtime.type_info_base(type_info_of(T))
+	s, ok := info.variant.(runtime.Type_Info_Struct)
+	if !ok do return
+
+	fmt.printfln("%v total size: %d, align: %d", type_info_of(T), info.size, info.align)
+	for i in 0 ..< int(s.field_count) {
+		fmt.printfln("  %v: offset = %d, size = %d", s.names[i], s.offsets[i], s.types[i].size)
+	}
 }

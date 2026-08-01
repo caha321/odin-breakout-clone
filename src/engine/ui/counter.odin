@@ -1,4 +1,4 @@
-package breakout
+package ui
 
 import "core:fmt"
 import "core:math/rand"
@@ -66,14 +66,19 @@ Counter_Create :: proc "contextless" (
 
 // Returns a pointer to whichever array is currently active and its count
 @(require_results)
-Counter_ActiveEffects :: proc(self: ^Counter) -> (effects: ^[2]Counter_Effect, count: u8) {
+Counter_ActiveEffects :: proc "contextless" (
+	self: ^Counter,
+) -> (
+	effects: ^[2]Counter_Effect,
+	count: u8,
+) {
 	if self.active_is_increase {
 		return &self.increase_effects, self.increase_effect_count
 	}
 	return &self.decrease_effects, self.decrease_effect_count
 }
 
-Counter_Update :: proc(self: ^Counter, new_value: i32, dt: f32) {
+Counter_Update :: proc "contextless" (self: ^Counter, new_value: i32, dt: f32) {
 	if new_value > self.value {
 		self.active_is_increase = true
 	} else if new_value < self.value {

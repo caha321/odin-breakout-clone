@@ -1,60 +1,62 @@
-package breakout
+package engine
 
 import "core:log"
 import b2 "vendor:box2d"
 
-Entity_Handle :: struct {
+Handle :: struct {
 	index:      u32, // 0 is always invalid
 	generation: u32,
 }
 
-Entity_Slot :: struct {
-	entity:     Entity,
+Slot :: struct($T: typeid) {
+	value:      T,
 	generation: u32, // even = invalid (because of 0), odd = valid
 }
 
-Entity_Pool :: struct {
-	slots:     [dynamic]Entity_Slot,
+Pool :: struct($T: typeid) {
+	slots:     [dynamic]Slot(T),
 	free_list: [dynamic]u32, // indices of dead slots ready to use
+	on_remove: proc(v: ^T), // callback when value is removed from pool
 }
 
 slot_valid :: #force_inline proc(generation: u32) -> bool {
 	return generation % 2 == 1
 }
 
-Pool_Add :: proc(pool: ^Entity_Pool, entity: Entity) -> Entity_Handle {
-	handle: Entity_Handle
+
+Pool_Add :: proc(pool: ^Pool($T), value: T) -> Handle {
+	handle: Handle
 
 	if len(pool.free_list) > 0 {
 		index := pop(&pool.free_list)
-		pool.slots[index].entity = entity
+		pool.slots[index].value = value
 		pool.slots[index].generation += 1 // odd = dead, now even = alive
-		log.debug("Reused dead slot", index, "for", entity)
+		log.debug("Reused dead slot", index, "for", value)
 		handle = {
 			index      = index + 1,
 			generation = pool.slots[index].generation,
 		}
 	} else {
-		append(&pool.slots, Entity_Slot{entity = entity, generation = 1})
-		log.debug("Appended slot", len(pool.slots), "for", entity)
-		handle = Entity_Handle {
+		append(&pool.slots, Slot(T){value = value, generation = 1})
+		log.debug("Appended slot", len(pool.slots), "for", value)
+		handle = Handle {
 			index      = u32(len(pool.slots)),
 			generation = 1,
 		}
 	}
 
-	set_user_data(entity.body_id, handle)
+	set_user_data(value.body_id, handle)
 	return handle
 }
 
 @(private = "file")
-entity_handle_to_index :: #force_inline proc(handle: Entity_Handle) -> (index: int, ok: bool) {
+entity_handle_to_index :: #force_inline proc(handle: Handle) -> (index: int, ok: bool) {
 	index = int(handle.index) - 1 // indices stored as +1, since 0 is always invalid
 	ok = index >= 0
 	return
 }
 
-Pool_Remove_Handle :: proc(pool: ^Entity_Pool, handle: Entity_Handle) -> bool {
+Pool_Remove_Handle :: proc(pool: ^Pool($T), handle: Handle) -> bool {
 	index, ok := Pool_GetValidIndex(pool^, handle)
 	if !ok {
 		log.warn("Tried to remove with invalid handle", handle)
@@ -62,14 +64,14 @@ Pool_Remove_Handle :: proc(pool: ^Entity_Pool, handle: Entity_Handle) -> bool {
 	}
 	log.debug("Removing", handle, "from pool")
 
-	Entity_Destroy(pool.slots[index].entity)
+	if pool.on_remove != nil do pool.on_remove(&pool.slots[index].value)
 
 	pool.slots[index].generation += 1 // invalidate old handles and marks it as invalid
 	append(&pool.free_list, u32(index))
 	return true
 }
 
-Pool_Remove_BodyId :: proc(pool: ^Entity_Pool, id: b2.BodyId) -> bool {
+Pool_Remove_BodyId :: proc(pool: ^Pool($T), id: b2.BodyId) -> bool {
 	if !b2.Body_IsValid(id) {
 		log.warn("Tried to remove with invalid body id", id)
 		return false
@@ -78,7 +80,7 @@ Pool_Remove_BodyId :: proc(pool: ^Entity_Pool, id: b2.BodyId) -> bool {
 	return Pool_Remove_Handle(pool, handle)
 }
 
-Pool_Remove_ShapeId :: proc(pool: ^Entity_Pool, id: b2.ShapeId) -> bool {
+Pool_Remove_ShapeId :: proc(pool: ^Pool($T), id: b2.ShapeId) -> bool {
 	if !b2.Shape_IsValid(id) {
 		log.warn("Tried to remove with invalid shape id", id)
 		return false
@@ -94,7 +96,7 @@ Pool_Remove :: proc {
 }
 
 @(private = "file")
-Pool_GetValidIndex :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (index: int, ok: bool) {
+Pool_GetValidIndex :: proc(pool: Pool($T), handle: Handle) -> (index: int, ok: bool) {
 	index, ok = entity_handle_to_index(handle)
 	if !ok do return
 	ok =
@@ -104,20 +106,20 @@ Pool_GetValidIndex :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (index: 
 	return
 }
 
-Pool_Get_Handle :: proc(pool: Entity_Pool, handle: Entity_Handle) -> (entity: ^Entity, ok: bool) {
+Pool_Get_Handle :: proc(pool: Pool($T), handle: Handle) -> (value: ^T, ok: bool) {
 	index: int
 	index, ok = Pool_GetValidIndex(pool, handle)
 	if !ok do return nil, false
-	return &pool.slots[index].entity, true
+	return &pool.slots[index].value, true
 }
 
-Pool_Get_BodyId :: proc(pool: Entity_Pool, id: b2.BodyId) -> (entity: ^Entity, ok: bool) {
+Pool_Get_BodyId :: proc(pool: Pool($T), id: b2.BodyId) -> (entity: ^T, ok: bool) {
 	if !b2.Body_IsValid(id) do return nil, false
 	handle := userdata_to_entity_handle(b2.Body_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
 }
 
-Pool_Get_ShapeId :: proc(pool: Entity_Pool, id: b2.ShapeId) -> (entity: ^Entity, ok: bool) {
+Pool_Get_ShapeId :: proc(pool: Pool($T), id: b2.ShapeId) -> (entity: ^T, ok: bool) {
 	if !b2.Shape_IsValid(id) do return nil, false
 	handle := userdata_to_entity_handle(b2.Shape_GetUserData(id))
 	return Pool_Get_Handle(pool, handle)
@@ -129,38 +131,38 @@ Pool_Get :: proc {
 	Pool_Get_ShapeId,
 }
 
-Pool_Clear :: proc(pool: ^Entity_Pool) {
+Pool_Clear :: proc(pool: ^Pool($T)) {
 	log.debug("Clearing Pool...")
-	for slot, index in pool.slots {
+	for &slot, index in pool.slots {
 		if !slot_valid(slot.generation) do continue
-		Entity_Destroy(slot.entity)
+		if pool.on_remove != nil do pool.on_remove(&slot.value)
 	}
 	clear(&pool.free_list)
 	clear(&pool.slots)
 }
 
-Pool_Delete :: proc(pool: Entity_Pool) {
+Pool_Delete :: proc(pool: Pool($T)) {
 	delete(pool.free_list)
 	delete(pool.slots)
 }
 
 // make sure our handle fits into user data "pointer"
 // we transmute, so they must be exactly the same size
-#assert(size_of(Entity_Handle) == size_of(rawptr))
+#assert(size_of(Handle) == size_of(rawptr))
 
 @(private = "file")
-entity_handle_to_userdata :: #force_inline proc(handle: Entity_Handle) -> rawptr {
+entity_handle_to_userdata :: #force_inline proc(handle: Handle) -> rawptr {
 	return transmute(rawptr)handle
 }
 
 @(private = "file")
-userdata_to_entity_handle :: #force_inline proc(p: rawptr) -> Entity_Handle {
-	return transmute(Entity_Handle)p
+userdata_to_entity_handle :: #force_inline proc(p: rawptr) -> Handle {
+	return transmute(Handle)p
 }
 
 // set userdata of entities body and shapes to entity ID
 @(private = "file")
-set_user_data :: proc(body_id: b2.BodyId, handle: Entity_Handle) {
+set_user_data :: proc(body_id: b2.BodyId, handle: Handle) {
 	user_data := entity_handle_to_userdata(handle)
 
 	b2.Body_SetUserData(body_id, user_data)
@@ -200,10 +202,15 @@ destroy_test_world :: proc(world: b2.WorldId) {
 }
 
 @(private = "file")
+Entity :: struct {
+	body_id: b2.BodyId,
+}
+
+@(private = "file")
 make_test_entity :: proc(world: b2.WorldId) -> Entity {
 	def := b2.DefaultBodyDef()
 	body_id := b2.CreateBody(world, def)
-	return Entity{body_id = body_id, variant = Wall{}} // pick whatever cheap variant
+	return Entity{body_id = body_id}
 }
 
 // ---- tests ----
@@ -213,7 +220,7 @@ test_pool_add_returns_valid_handle :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e := make_test_entity(world)
@@ -241,7 +248,7 @@ test_pool_add_twice_gives_distinct_handles :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e1 := make_test_entity(world)
@@ -264,7 +271,7 @@ test_pool_remove_invalidates_handle :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e := make_test_entity(world)
@@ -284,7 +291,7 @@ test_pool_reuses_freed_slot_with_bumped_generation :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e1 := make_test_entity(world)
@@ -308,7 +315,7 @@ test_stale_handle_never_aliases_new_entity :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e1 := make_test_entity(world)
@@ -329,7 +336,7 @@ test_pool_get_by_body_id_matches_handle :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e := make_test_entity(world)
@@ -348,7 +355,7 @@ test_pool_clear_invalidates_everything :: proc(t: ^testing.T) {
 	world := make_test_world()
 	defer destroy_test_world(world)
 
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
 	e1 := make_test_entity(world)
@@ -368,10 +375,10 @@ test_pool_clear_invalidates_everything :: proc(t: ^testing.T) {
 
 @(test)
 test_handle_zero_index_always_invalid :: proc(t: ^testing.T) {
-	pool: Entity_Pool
+	pool: Pool(Entity)
 	defer Pool_Delete(pool)
 
-	zero_handle := Entity_Handle {
+	zero_handle := Handle {
 		index      = 0,
 		generation = 1,
 	}

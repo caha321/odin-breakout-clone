@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "base:runtime"
 import b2 "vendor:box2d"
@@ -26,7 +26,7 @@ init_debug_draw :: proc "contextless" () -> b2.DebugDraw {
 	return debug_draw
 }
 
-
+@(private = "file")
 hex_to_rl_color :: proc "c" (c: b2.HexColor, alpha: u8 = 255) -> rl.Color {
 	v := u32(c)
 	return rl.Color{u8(v >> 16), u8(v >> 8), u8(v), alpha}

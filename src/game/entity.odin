@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "core:log"
 import b2 "vendor:box2d"
@@ -62,7 +62,7 @@ Entity_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
 	}
 }
 
-Entity_Destroy :: proc(entity: Entity) {
+Entity_Destroy :: proc(entity: ^Entity) {
 	if b2.Body_IsValid(entity.body_id) {
 		log.debug(
 			"Destroying Box2D body... name:",

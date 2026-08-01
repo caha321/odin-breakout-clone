@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "base:intrinsics"
 import "core:log"
@@ -6,6 +6,10 @@ import "core:time"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+import "../engine"
+
+DT :: 1.0 / 60.0
+SUB_STEP_COUNT :: 4 // Box2D
 
 Game_State :: enum {
 	New,
@@ -21,7 +25,7 @@ Game :: struct {
 	textures:         [Texture]rl.Texture2D,
 	sounds:           [Sound]rl.Sound,
 	music:            [Music]rl.Music,
-	entity_pool:      Entity_Pool,
+	entity_pool:      engine.Pool(Entity),
 	remaining_balls:  i32,
 	remaining_blocks: i32,
 	ball_speed:       f32,
@@ -41,6 +45,7 @@ game_init :: proc() -> bool {
 	rl.InitAudioDevice()
 
 	g = new(Game)
+	g.entity_pool.on_remove = Entity_Destroy
 	load_assets() or_return
 	game_update_state(.New)
 
@@ -78,14 +83,14 @@ game_restart :: proc() {
 }
 
 game_clear_entities :: proc() {
-	Pool_Clear(&g.entity_pool)
+	engine.Pool_Clear(&g.entity_pool)
 
 	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
 }
 
 game_shutdown :: proc() {
 	game_clear_entities()
-	Pool_Delete(g.entity_pool)
+	engine.Pool_Delete(g.entity_pool)
 
 	for rl_texture, texture in g.textures {
 		if rl.IsTextureValid(rl_texture) {
@@ -177,8 +182,8 @@ Game_Update :: proc() {
 
 	for g.accumulated_time >= DT {
 		for &slot in g.entity_pool.slots {
-			if !slot_valid(slot.generation) do continue
-			Entity_Update(&slot.entity, DT)
+			if !engine.slot_valid(slot.generation) do continue
+			Entity_Update(&slot.value, DT)
 		}
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
 
@@ -197,18 +202,18 @@ check_contact_events :: proc() {
 	for i in 0 ..< events.hitCount {
 		hit := events.hitEvents[i]
 
-		entity, ok := Pool_Get(g.entity_pool, hit.shapeIdA)
+		entity, ok := engine.Pool_Get(g.entity_pool, hit.shapeIdA)
 		if ok do Entity_Hit(entity, hit)
 
-		entity, ok = Pool_Get(g.entity_pool, hit.shapeIdB)
+		entity, ok = engine.Pool_Get(g.entity_pool, hit.shapeIdB)
 		if ok do Entity_Hit(entity, hit)
 	}
 
 	for i in 0 ..< events.beginCount { 	// contact begin events
 		event := events.beginEvents[i]
 
-		entity_a := Pool_Get(g.entity_pool, event.shapeIdA) or_continue
-		entity_b := Pool_Get(g.entity_pool, event.shapeIdB) or_continue
+		entity_a := engine.Pool_Get(g.entity_pool, event.shapeIdA) or_continue
+		entity_b := engine.Pool_Get(g.entity_pool, event.shapeIdB) or_continue
 
 		try_attach_ball(entity_a, entity_b)
 		try_attach_ball(entity_b, entity_a)
@@ -220,13 +225,13 @@ check_sensor_events :: proc() {
 	for i in 0 ..< events.beginCount {
 		event := events.beginEvents[i]
 
-		sensor_entity, ok := Pool_Get(g.entity_pool, event.sensorShapeId)
+		sensor_entity, ok := engine.Pool_Get(g.entity_pool, event.sensorShapeId)
 		if !ok {
 			log.warn("Could not get entity for sensor shape", event.sensorShapeId)
 			continue
 		}
 		visitor_entity: ^Entity
-		visitor_entity, ok = Pool_Get(g.entity_pool, event.visitorShapeId)
+		visitor_entity, ok = engine.Pool_Get(g.entity_pool, event.visitorShapeId)
 		if !ok {
 			log.warn("Could not get entity for visitor shape", event.visitorShapeId)
 			continue
@@ -236,7 +241,7 @@ check_sensor_events :: proc() {
 		case Ball:
 			if sensor_entity.variant != nil do break // ground sensor is nil
 			g.remaining_balls -= 1
-			Pool_Remove(&g.entity_pool, event.visitorShapeId)
+			engine.Pool_Remove(&g.entity_pool, event.visitorShapeId)
 			// only play sound if it does not overlap with game over sound
 			if g.remaining_balls > 0 do rl.PlaySound(g.sounds[.BallLost])
 
@@ -247,12 +252,12 @@ check_sensor_events :: proc() {
 
 			Paddle_ApplyPowerup(visitor_entity, &v, powerup.kind)
 			rl.PlaySound(g.sounds[.PowerupCollected])
-			Pool_Remove(&g.entity_pool, event.sensorShapeId) // powerup is the sensor
+			engine.Pool_Remove(&g.entity_pool, event.sensorShapeId) // powerup is the sensor
 
 		case Powerup:
 			if sensor_entity.variant != nil do break // ground sensor is nil
 			// clean up missed powerups
-			Pool_Remove(&g.entity_pool, event.visitorShapeId) // powerup is the visitor
+			engine.Pool_Remove(&g.entity_pool, event.visitorShapeId) // powerup is the visitor
 		}
 	}
 
@@ -268,11 +273,11 @@ Game_Render :: proc() {
 	// TODO blend stuff
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
-	rl.ClearBackground(BACKGROUND_COLOR)
+	rl.ClearBackground(rl.BEIGE)
 
 	for &slot in g.entity_pool.slots {
-		if !slot_valid(slot.generation) do continue
-		Entity_Draw(&slot.entity)
+		if !engine.slot_valid(slot.generation) do continue
+		Entity_Draw(&slot.value)
 	}
 	ui_draw()
 
@@ -293,5 +298,5 @@ Game_AddEntity :: proc(entity: Entity) {
 		g.remaining_blocks += 1
 	}
 
-	Pool_Add(&g.entity_pool, entity)
+	engine.Pool_Add(&g.entity_pool, entity)
 }

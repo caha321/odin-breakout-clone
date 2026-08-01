@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "core:fmt"
 import "core:log"

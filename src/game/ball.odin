@@ -1,4 +1,4 @@
-package breakout
+package game
 
 import "core:log"
 import "core:math"
@@ -6,6 +6,7 @@ import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+import "../engine"
 
 BALL_RADIUS :: 1
 BALL_SPEED_INITIAL :: 25
@@ -117,7 +118,7 @@ try_attach_ball :: proc(paddle_entity, ball_entity: ^Entity) -> bool {
 }
 
 try_release_ball :: proc(ball_entity: ^Entity, variant: ^Ball) -> bool {
-	paddle_entity := Pool_Get(g.entity_pool, variant.attached_to) or_return
+	paddle_entity := engine.Pool_Get(g.entity_pool, variant.attached_to) or_return
 	if b2.Body_GetType(ball_entity.body_id) != .kinematicBody do return false
 
 	b2.Body_SetType(ball_entity.body_id, .dynamicBody)
@@ -130,7 +131,7 @@ try_release_ball :: proc(ball_entity: ^Entity, variant: ^Ball) -> bool {
 }
 
 Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
-	paddle, ok := Pool_Get(g.entity_pool, variant.attached_to)
+	paddle, ok := engine.Pool_Get(g.entity_pool, variant.attached_to)
 	if ok { 	// we are attached to a paddle
 		if rl.IsMouseButtonPressed(.LEFT) {
 			try_release_ball(self, variant)

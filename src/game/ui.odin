@@ -1,9 +1,10 @@
-package breakout
+package game
 
 import "core:fmt"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+import "../engine/ui"
 
 BORDER_WIDTH :: (ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * PPM / 2
 BORDER_COLOR :: rl.BLACK
@@ -16,37 +17,40 @@ UI_TEXT_X_OFFSET :: BORDER_WIDTH - 30
 UI_FONT_SIZE :: 40
 UI_FONT_COLOR :: rl.WHITE
 
-score_counter := Counter_Create(
+score_counter := ui.Counter_Create(
 	UI_FONT_COLOR,
 	UI_FONT_SIZE,
-	on_increase = {Effect_Pulse{color = rl.GREEN}},
-	on_decrease = {Effect_Pulse{color = rl.RED}},
+	on_increase = {ui.Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {ui.Effect_Pulse{color = rl.RED}},
 )
 
-time_counter := Counter_Create(
+time_counter := ui.Counter_Create(
 	UI_FONT_COLOR,
 	UI_FONT_SIZE,
-	on_increase = {Effect_Pop{}, Effect_Pulse{color = rl.GRAY}},
+	on_increase = {ui.Effect_Pop{}, ui.Effect_Pulse{color = rl.GRAY}},
 )
 
-ball_counter := Counter_Create(
+ball_counter := ui.Counter_Create(
 	UI_FONT_COLOR,
 	UI_FONT_SIZE,
-	on_increase = {Effect_Pop{}, Effect_Pulse{color = rl.GREEN}},
-	on_decrease = {Effect_Shake{duration = 1, strength = 3}, Effect_Pulse{color = rl.RED}},
+	on_increase = {ui.Effect_Pop{}, ui.Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {ui.Effect_Shake{duration = 1, strength = 3}, ui.Effect_Pulse{color = rl.RED}},
 )
 
-block_counter := Counter_Create(
+block_counter := ui.Counter_Create(
 	UI_FONT_COLOR,
 	UI_FONT_SIZE,
-	on_decrease = {Effect_Shake{duration = .25, strength = 2}, Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {
+		ui.Effect_Shake{duration = .25, strength = 2},
+		ui.Effect_Pulse{color = rl.GREEN},
+	},
 )
 
 UI_Update :: proc(dt: f32) {
-	Counter_Update(&score_counter, g.score, dt)
-	Counter_Update(&time_counter, i32(g.elapsed_time), dt)
-	Counter_Update(&ball_counter, g.remaining_balls, dt)
-	Counter_Update(&block_counter, g.remaining_blocks, dt)
+	ui.Counter_Update(&score_counter, g.score, dt)
+	ui.Counter_Update(&time_counter, i32(g.elapsed_time), dt)
+	ui.Counter_Update(&ball_counter, g.remaining_balls, dt)
+	ui.Counter_Update(&block_counter, g.remaining_blocks, dt)
 }
 
 ui_draw :: proc() {
@@ -57,19 +61,39 @@ ui_draw :: proc() {
 
 	text_y: i32 = UI_TEXT_Y
 	rl.DrawText("SCORE", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
-	Counter_Draw(&score_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%5d", .Right)
+	ui.Counter_Draw(
+		&score_counter,
+		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
+		"%5d",
+		.Right,
+	)
 
 	text_y += UI_FONT_SIZE
 	rl.DrawText("BALLS", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
-	Counter_Draw(&ball_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%2d", .Right)
+	ui.Counter_Draw(
+		&ball_counter,
+		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
+		"%2d",
+		.Right,
+	)
 
 	text_y += UI_FONT_SIZE
 	rl.DrawText("BLOCKS", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
-	Counter_Draw(&block_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%2d", .Right)
+	ui.Counter_Draw(
+		&block_counter,
+		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
+		"%2d",
+		.Right,
+	)
 
 	text_y += UI_FONT_SIZE
 	rl.DrawText("TIME", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
-	Counter_Draw(&time_counter, {UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y}, "%3d", .Right)
+	ui.Counter_Draw(
+		&time_counter,
+		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
+		"%3d",
+		.Right,
+	)
 
 
 	rl.DrawText(

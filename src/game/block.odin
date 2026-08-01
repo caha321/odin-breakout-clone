@@ -1,9 +1,11 @@
-package breakout
+package game
 
 import "core:log"
 import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
+
+import "../engine"
 
 Block_Kind :: enum u8 {
 	Red,
@@ -108,7 +110,7 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		g.score += i32(variant.score_destroy)
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y -= 5
-		Pool_Remove(&g.entity_pool, entity.body_id)
+		engine.Pool_Remove(&g.entity_pool, entity.body_id)
 
 		if rand.float32() < POWERUP_DROP_CHANCE {
 			Powerup_Create(position)
