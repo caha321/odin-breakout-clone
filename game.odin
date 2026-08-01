@@ -97,6 +97,13 @@ game_shutdown :: proc() {
 		}
 	}
 
+	for rl_music, music in g.music {
+		if rl.IsMusicValid(rl_music) {
+			log.info("Unloading Music:", music)
+			rl.UnloadMusicStream(rl_music)
+		}
+	}
+
 	rl.CloseAudioDevice()
 
 	free(g)
