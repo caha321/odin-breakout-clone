@@ -234,6 +234,7 @@ check_sensor_events :: proc() {
 			Pool_Remove(&g.entity_pool, event.sensorShapeId) // powerup is the sensor
 
 		case Powerup:
+			if sensor_entity.variant != nil do break // ground sensor is nil
 			// clean up missed powerups
 			Pool_Remove(&g.entity_pool, event.visitorShapeId) // powerup is the visitor
 		}
