@@ -83,6 +83,4 @@ ui_draw :: proc() {
 			color = rl.WHITE,
 		)
 	}
-
-	free_all(context.temp_allocator)
 }

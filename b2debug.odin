@@ -78,8 +78,6 @@ draw_solid_polygon :: proc "c" (
 	for i in 0 ..< vertexCount {
 		rl.DrawLineV(points[i], points[(i + 1) % vertexCount], hex_to_rl_color(color))
 	}
-
-	free_all(context.temp_allocator)
 }
 
 draw_circle :: proc "c" (center: [2]f32, radius: f32, color: b2.HexColor, ctx: rawptr) {

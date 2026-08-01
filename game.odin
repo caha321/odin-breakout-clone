@@ -56,6 +56,8 @@ Game_Run :: proc() -> bool {
 	for !rl.WindowShouldClose() {
 		Game_Update()
 		Game_Render()
+
+		free_all(context.temp_allocator)
 	}
 
 	return true

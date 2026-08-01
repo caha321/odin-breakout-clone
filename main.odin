@@ -34,6 +34,8 @@ main :: proc() {
 				for _, entry in track.allocation_map {
 					fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
 				}
+			} else {
+				fmt.eprintln("No memory leaks detected.")
 			}
 			mem.tracking_allocator_destroy(&track)
 		}
