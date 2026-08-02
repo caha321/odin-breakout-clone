@@ -98,11 +98,12 @@ ui_draw :: proc() {
 
 	rl.DrawText(
 		fmt.ctprintf(
-			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\nb2 Bytes: %d",
+			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\n#Ent. Backg.: %d\nb2 Bytes: %d",
 			rl.GetFPS(),
 			g.update_time_ms,
 			g.render_time_ms,
 			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
+			len(g.entity_pool_background.slots) - len(g.entity_pool_background.free_list),
 			b2.GetByteCount(),
 		),
 		UI_TEXT_X_BORDER_RIGHT,

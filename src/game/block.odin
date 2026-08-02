@@ -1,6 +1,7 @@
 package game
 
 import "core:log"
+import "core:math/linalg"
 import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
@@ -110,6 +111,7 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		g.score += i32(variant.score_destroy)
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y -= 5
+		Block_Break(entity, variant)
 		engine.Pool_Remove(&g.entity_pool, entity.body_id)
 
 		if rand.float32() < POWERUP_DROP_CHANCE {
@@ -117,5 +119,52 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		}
 
 		g.remaining_blocks -= 1
+	}
+}
+
+// break the block into voronoi fragments in the background
+Block_Break :: proc(entity: ^Entity, variant: ^Block) {
+	if int(variant.kind) > 6 {
+		log.error("Cannot fragment invalid block variant", variant)
+		return
+	}
+
+	seed_count := rand.int_range(7, 15)
+	log.debugf("Breaking block into %d fragments...", seed_count)
+
+	fragments := engine.generate_fractures({BLOCK_HALF_WIDTH, BLOCK_HALF_HEIGHT}, seed_count)
+	defer delete(fragments)
+
+	transform := b2.Body_GetTransform(entity.body_id)
+
+	for frag in fragments {
+		world_centroid := transform.p + b2.RotateVector(transform.q, frag.centroid)
+
+		body_def := b2.DefaultBodyDef()
+		body_def.type = .dynamicBody
+		body_def.position = world_centroid
+		body_def.rotation = transform.q
+		frag_body := b2.CreateBody(g.world_id_background, body_def)
+
+		hull := b2.ComputeHull(frag.vertices)
+		poly := b2.MakePolygon(hull, 0.0)
+
+		shape_def := b2.DefaultShapeDef()
+		shape_def.density = 1.0
+		shape_def.material.friction = 0.3
+		shape_def.material.restitution = 0.1
+		_ = b2.CreatePolygonShape(frag_body, shape_def, &poly)
+
+		dir := linalg.normalize(frag.centroid)
+		b2.Body_ApplyLinearImpulseToCenter(frag_body, dir * 1.5, true)
+
+		texture := block_kind_to_texture[variant.kind]
+
+		Game_AddEntity(
+			{
+				body_id = frag_body,
+				variant = Fragment{texture = texture, vertices = frag.vertices, uvs = frag.uvs},
+			},
+		)
 	}
 }

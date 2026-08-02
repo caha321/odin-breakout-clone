@@ -10,6 +10,7 @@ Entity_Variant :: union {
 	Paddle,
 	Wall,
 	Powerup,
+	Fragment,
 }
 
 Entity :: struct {
@@ -29,36 +30,28 @@ Entity_Draw :: proc(entity: ^Entity) {
 		break
 	case Powerup:
 		Powerup_Draw(entity, v)
+	case Fragment:
+		Fragment_Draw(entity, v)
 	}
 }
 
 Entity_Update :: proc(entity: ^Entity, dt: f32) {
-	switch &v in entity.variant {
+	#partial switch &v in entity.variant {
 	case Ball:
 		Ball_Update(entity, &v, dt)
 	case Paddle:
 		Paddle_Update(entity, v, dt)
-	case Block:
-		break
-	case Wall:
-		break
-	case Powerup:
-		break
 	}
 }
 
 Entity_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
-	switch &v in entity.variant {
-	case Ball:
-		break
+	#partial switch &v in entity.variant {
 	case Block:
 		Block_Hit(entity, &v, hit)
 	case Paddle:
 		Paddle_Hit(entity, hit)
 	case Wall:
 		Wall_Hit(entity, hit)
-	case Powerup:
-		break
 	}
 }
 
@@ -71,5 +64,11 @@ Entity_Destroy :: proc(entity: ^Entity) {
 			entity.body_id,
 		)
 		b2.DestroyBody(entity.body_id)
+	}
+	#partial switch &v in entity.variant {
+	case Fragment:
+		delete(v.uvs)
+		delete(v.vertices)
+		log.debug("Fragment variant destroyed")
 	}
 }
