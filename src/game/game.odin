@@ -26,6 +26,8 @@ Game :: struct {
 	music:                  [Music]rl.Music,
 	entity_pool:            engine.Pool(Entity),
 	entity_pool_background: engine.Pool(Entity),
+	particle_system:        ParticleSystem,
+	//
 	remaining_balls:        i32,
 	remaining_blocks:       i32,
 	ball_speed:             f32,
@@ -34,6 +36,7 @@ Game :: struct {
 	world_id_background:    b2.WorldId,
 	draw_b2_debug:          bool,
 	accumulated_time:       f32,
+	tick_count:             u64, // total physics step count
 	// perf stats
 	update_time_ms:         f64,
 	render_time_ms:         f64,
@@ -48,6 +51,7 @@ game_init :: proc() -> bool {
 	g = new(Game)
 	g.entity_pool.on_remove = Entity_Destroy
 	g.entity_pool_background.on_remove = Entity_Destroy
+	g.particle_system = ParticleSystem_Init(capacity = 100)
 	load_assets() or_return
 	game_update_state(.New)
 
@@ -79,6 +83,7 @@ game_restart :: proc() {
 	game_clear_entities()
 	g.remaining_balls = 0
 	g.remaining_blocks = 0
+	g.tick_count = 0
 
 	g.world_id = World_Create(gravity = {0, 0})
 	create_bounds(g.world_id, true)
@@ -94,6 +99,7 @@ game_restart :: proc() {
 game_clear_entities :: proc() {
 	engine.Pool_Clear(&g.entity_pool)
 	engine.Pool_Clear(&g.entity_pool_background)
+	ParticleSystem_Clear(&g.particle_system)
 
 	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
 	if b2.World_IsValid(g.world_id_background) do b2.DestroyWorld(g.world_id_background)
@@ -103,6 +109,7 @@ game_shutdown :: proc() {
 	game_clear_entities()
 	engine.Pool_Delete(g.entity_pool)
 	engine.Pool_Delete(g.entity_pool_background)
+	ParticleSystem_Destroy(g.particle_system)
 
 	for rl_texture, texture in g.textures {
 		if rl.IsTextureValid(rl_texture) {
@@ -193,6 +200,8 @@ Game_Update :: proc() {
 	}
 
 	for g.accumulated_time >= DT {
+		g.tick_count += 1
+		ParticleSystem_Update(&g.particle_system, DT)
 		for &slot in g.entity_pool_background.slots {
 			if !engine.slot_valid(slot.generation) do continue
 			Entity_Update(&slot.value, DT)
@@ -326,6 +335,8 @@ Game_Render :: proc() {
 		if !engine.slot_valid(slot.generation) do continue
 		Entity_Draw(&slot.value)
 	}
+
+	ParticleSystem_Draw(&g.particle_system)
 
 	for &slot in g.entity_pool.slots {
 		if !engine.slot_valid(slot.generation) do continue

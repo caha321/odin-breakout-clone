@@ -161,6 +161,22 @@ Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
 			b2.Body_SetLinearVelocity(self.body_id, vel * (g.ball_speed / speed))
 		}
 	}
+
+	if g.tick_count % 3 == 0 {
+		ParticleSystem_Emit(
+			&g.particle_system,
+			{
+				shape       = .Circle,
+				position    = self.previous_transform.p,
+				// no velocity, strictly a trail
+				color_begin = rl.GRAY if variant.kind == .Grey else rl.BLUE,
+				color_end   = rl.WHITE,
+				size_begin  = BALL_RADIUS,
+				size_end    = .5,
+				life_total  = 1,
+			},
+		)
+	}
 }
 
 /*
