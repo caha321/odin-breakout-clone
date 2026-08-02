@@ -6,7 +6,6 @@ import rl "vendor:raylib"
 
 PADDLE_HALF_WIDTH :: f32(4)
 PADDLE_HALF_HEIGHT :: f32(0.8)
-PADDLE_X_MAX :: ARENA_HALF_HEIGHT - PADDLE_HALF_WIDTH - 0.5 // keep paddle inside the side walls
 PADDLE_Y :: f32(-20) // fixed height in world space
 
 PADDLE_TILT_MAX_ANGLE :: rl.DEG2RAD * 22 // max lean angle
@@ -59,7 +58,8 @@ Paddle_Update :: proc(entity: ^Entity, variant: Paddle, dt: f32) {
 	target_world := screen_to_world(rl.GetMousePosition())
 	target_world.y = PADDLE_Y
 
-	target_world.x = clamp(target_world.x, -PADDLE_X_MAX, PADDLE_X_MAX)
+	x_max := paddle_x_max(variant.size)
+	target_world.x = clamp(target_world.x, -x_max, x_max)
 
 	current_pos := b2.Body_GetPosition(entity.body_id)
 
@@ -155,7 +155,7 @@ paddle_capsule :: proc(size: Paddle_Size) -> b2.Capsule {
 }
 
 @(private = "file")
-paddle_half_width :: proc(size: Paddle_Size) -> f32 {
+paddle_half_width :: #force_inline proc(size: Paddle_Size) -> f32 {
 	switch size {
 	case .Small:
 		return PADDLE_HALF_WIDTH * 0.75
@@ -165,4 +165,10 @@ paddle_half_width :: proc(size: Paddle_Size) -> f32 {
 		return PADDLE_HALF_WIDTH * 1.5
 	}
 	return PADDLE_HALF_WIDTH
+}
+
+// keep paddle inside the side walls
+@(private = "file")
+paddle_x_max :: #force_inline proc(size: Paddle_Size) -> f32 {
+	return ARENA_HALF_HEIGHT - paddle_half_width(size) - 0.5
 }
