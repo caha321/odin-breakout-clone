@@ -27,11 +27,11 @@ Particle :: struct {
 }
 
 ParticleSystem :: struct {
-	particles: [dynamic]Particle,
+	particles: #soa[dynamic]Particle,
 }
 
 ParticleSystem_Init :: proc(capacity: int) -> ParticleSystem {
-	return ParticleSystem{particles = make([dynamic]Particle, capacity)}
+	return ParticleSystem{particles = make(#soa[dynamic]Particle, capacity)}
 }
 
 ParticleSystem_Clear :: proc "contextless" (self: ^ParticleSystem) {
