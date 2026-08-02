@@ -105,10 +105,10 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 	log.debug("Block hit", entity)
 	play_hit_sound(.HitBlock, hit)
 	variant.health -= 1
-	g.score += i32(variant.score_hit)
+	score := i32(variant.score_hit)
 	g.ball_speed += 0.5
 	if variant.health <= 0 {
-		g.score += i32(variant.score_destroy)
+		score += i32(variant.score_destroy)
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y -= 5
 		Block_Break(entity, variant, hit)
@@ -120,6 +120,7 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 
 		g.remaining_blocks -= 1
 	}
+	Player_AddScore(&g.player, score)
 }
 
 // break the block into voronoi fragments in the background

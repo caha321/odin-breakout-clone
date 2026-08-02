@@ -1,7 +1,6 @@
 package game
 
 import "core:fmt"
-import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 import "../engine/ui"
@@ -22,6 +21,13 @@ score_counter := ui.Counter_Create(
 	UI_FONT_SIZE,
 	on_increase = {ui.Effect_Pulse{color = rl.GREEN}},
 	on_decrease = {ui.Effect_Pulse{color = rl.RED}},
+)
+
+combo_counter := ui.Counter_Create(
+	UI_FONT_COLOR,
+	UI_FONT_SIZE,
+	on_increase = {ui.Effect_Pop{}, ui.Effect_Pulse{color = rl.GREEN}},
+	on_decrease = {ui.Effect_Shake{duration = 1, strength = 2}, ui.Effect_Pulse{color = rl.RED}},
 )
 
 time_counter := ui.Counter_Create(
@@ -47,8 +53,9 @@ block_counter := ui.Counter_Create(
 )
 
 UI_Update :: proc(dt: f32) {
-	ui.Counter_Update(&score_counter, g.score, dt)
-	ui.Counter_Update(&time_counter, i32(g.elapsed_time), dt)
+	ui.Counter_Update(&score_counter, g.player.score, dt)
+	ui.Counter_Update(&combo_counter, g.player.combo_multiplier, dt)
+	ui.Counter_Update(&time_counter, i32(g.player.elapsed_time), dt)
 	ui.Counter_Update(&ball_counter, g.remaining_balls, dt)
 	ui.Counter_Update(&block_counter, g.remaining_blocks, dt)
 }
@@ -65,6 +72,15 @@ ui_draw :: proc() {
 		&score_counter,
 		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
 		"%5d",
+		.Right,
+	)
+
+	text_y += UI_FONT_SIZE
+	rl.DrawText("COMBO", UI_TEXT_X_BORDER_LEFT, text_y, UI_FONT_SIZE, UI_FONT_COLOR)
+	ui.Counter_Draw(
+		&combo_counter,
+		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
+		"%dX",
 		.Right,
 	)
 
@@ -98,13 +114,13 @@ ui_draw :: proc() {
 
 	rl.DrawText(
 		fmt.ctprintf(
-			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\n#Ent. Backg.: %d\nb2 Bytes: %d",
+			"FPS: %d\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\n#Ent. Backg.: %d\n\nCombo Time Left: %.1f",
 			rl.GetFPS(),
 			g.update_time_ms,
 			g.render_time_ms,
 			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
 			len(g.entity_pool_background.slots) - len(g.entity_pool_background.free_list),
-			b2.GetByteCount(),
+			Player_ComboTimeRemaining(g.player),
 		),
 		UI_TEXT_X_BORDER_RIGHT,
 		10,

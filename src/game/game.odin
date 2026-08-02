@@ -20,8 +20,7 @@ Game_State :: enum {
 
 Game :: struct {
 	state:                  Game_State,
-	score:                  i32,
-	lives:                  i32, // TODO
+	player:                 Player,
 	textures:               [Texture]rl.Texture2D,
 	sounds:                 [Sound]rl.Sound,
 	music:                  [Music]rl.Music,
@@ -30,7 +29,6 @@ Game :: struct {
 	remaining_balls:        i32,
 	remaining_blocks:       i32,
 	ball_speed:             f32,
-	elapsed_time:           f32, // accumulates frame times while game is running
 	// physics stuff
 	world_id:               b2.WorldId,
 	world_id_background:    b2.WorldId,
@@ -43,6 +41,7 @@ Game :: struct {
 
 g: ^Game
 
+@(private = "file")
 game_init :: proc() -> bool {
 	rl.InitAudioDevice()
 
@@ -75,8 +74,7 @@ Game_Run :: proc() -> bool {
 
 // Restart game, resets all state to initial values
 game_restart :: proc() {
-	g.score = 0
-	g.elapsed_time = 0
+	g.player = Player_Init()
 	g.ball_speed = BALL_SPEED_INITIAL
 	game_clear_entities()
 	g.remaining_balls = 0
@@ -191,7 +189,7 @@ Game_Update :: proc() {
 
 	if g.state == .Running {
 		g.accumulated_time += frame_time
-		g.elapsed_time += frame_time
+		Player_Update(&g.player, frame_time)
 	}
 
 	for g.accumulated_time >= DT {
@@ -215,6 +213,7 @@ Game_Update :: proc() {
 	g.update_time_ms = time.duration_milliseconds(time.tick_since(update_start))
 }
 
+@(private = "file")
 check_contact_events :: proc() {
 	events := b2.World_GetContactEvents(g.world_id)
 
@@ -239,6 +238,7 @@ check_contact_events :: proc() {
 	}
 }
 
+@(private = "file")
 check_sensor_events :: proc() {
 	events := b2.World_GetSensorEvents(g.world_id)
 	for i in 0 ..< events.beginCount {
@@ -285,8 +285,10 @@ check_sensor_events :: proc() {
 	}
 }
 
+@(private = "file")
 debug_draw := init_debug_draw()
 
+@(private = "file")
 draw_background :: proc(texture: rl.Texture2D) {
 	sw := f32(rl.GetScreenWidth())
 	sh := f32(rl.GetScreenHeight())
