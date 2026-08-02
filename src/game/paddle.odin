@@ -17,6 +17,7 @@ PADDLE_TILT_ANGULAR_GAIN :: f32(12) // how snappily rotation chases its target
 Paddle_Flag :: enum u8 {
 	Tilt_Enabled,
 	Sticky,
+	Background,
 }
 
 Paddle_Flags :: bit_set[Paddle_Flag]
@@ -32,14 +33,14 @@ Paddle :: struct {
 	size:  Paddle_Size,
 }
 
-Paddle_Create :: proc(size: Paddle_Size = .Normal) {
+Paddle_Create :: proc(background: bool) {
 	body_def := b2.DefaultBodyDef()
 	body_def.type = .kinematicBody // moved by player, not by physics forces
 	body_def.name = "paddle"
 	body_def.position = {0, PADDLE_Y}
-	body_id := b2.CreateBody(g.world_id, body_def)
+	body_id := b2.CreateBody(background ? g.world_id_background : g.world_id, body_def)
 
-	capsule := paddle_capsule(size)
+	capsule := paddle_capsule(.Normal)
 	shape_def := b2.DefaultShapeDef()
 	shape_def.material.friction = 0.3
 	shape_def.enableHitEvents = true
@@ -47,7 +48,10 @@ Paddle_Create :: proc(size: Paddle_Size = .Normal) {
 	shape_def.enableSensorEvents = true // for powerups
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
-	Game_AddEntity({body_id = body_id, variant = Paddle{}})
+	variant := Paddle{}
+	if background do variant.flags += {.Background}
+
+	Game_AddEntity({body_id = body_id, variant = variant})
 }
 
 // Call once per fixed physics step, BEFORE b2.World_Step
@@ -85,6 +89,9 @@ Paddle_Update :: proc(entity: ^Entity, variant: Paddle, dt: f32) {
 }
 
 Paddle_Draw :: proc(entity: ^Entity, variant: Paddle) {
+	// background paddle is just for interacting with fragments
+	if .Background in variant.flags do return
+
 	pos := b2.Body_GetPosition(entity.body_id)
 	rot := b2.Body_GetRotation(entity.body_id)
 	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
@@ -137,6 +144,7 @@ Paddle_ApplyPowerup :: proc(entity: ^Entity, variant: ^Paddle, powerup: Powerup_
 	}
 }
 
+@(private = "file")
 paddle_capsule :: proc(size: Paddle_Size) -> b2.Capsule {
 	half_width := paddle_half_width(size)
 	return b2.Capsule {
@@ -146,6 +154,7 @@ paddle_capsule :: proc(size: Paddle_Size) -> b2.Capsule {
 	}
 }
 
+@(private = "file")
 paddle_half_width :: proc(size: Paddle_Size) -> f32 {
 	switch size {
 	case .Small:

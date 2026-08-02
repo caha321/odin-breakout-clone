@@ -87,8 +87,8 @@ game_restart :: proc() {
 	g.world_id_background = World_Create(gravity = {0, -10})
 	create_bounds(g.world_id_background, false)
 
-
-	Paddle_Create()
+	Paddle_Create(background = false)
+	Paddle_Create(background = true)
 	Ball_Create({0, 0})
 	blocks_create()
 }
@@ -195,6 +195,10 @@ Game_Update :: proc() {
 	}
 
 	for g.accumulated_time >= DT {
+		for &slot in g.entity_pool_background.slots {
+			if !engine.slot_valid(slot.generation) do continue
+			Entity_Update(&slot.value, DT)
+		}
 		for &slot in g.entity_pool.slots {
 			if !engine.slot_valid(slot.generation) do continue
 			Entity_Update(&slot.value, DT)
