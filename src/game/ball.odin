@@ -10,6 +10,7 @@ import "../engine"
 
 BALL_RADIUS :: 1
 BALL_SPEED_INITIAL :: 25
+BALL_RELEASE_BUTTON: rl.MouseButton : .LEFT
 REATTACH_COOLDOWN :: 0.3
 
 Ball_Kind :: enum u8 {
@@ -98,6 +99,7 @@ Ball_Draw :: proc(self: ^Entity) {
 }
 
 try_attach_ball :: proc(paddle_entity, ball_entity: ^Entity) -> bool {
+	if rl.IsMouseButtonDown(BALL_RELEASE_BUTTON) do return false
 	if paddle_entity == nil || ball_entity == nil do return false
 	paddle_variant := paddle_entity.variant.(Paddle) or_return
 	ball_variant := (&ball_entity.variant.(Ball)) or_return
@@ -133,7 +135,7 @@ try_release_ball :: proc(ball_entity: ^Entity, variant: ^Ball) -> bool {
 Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
 	paddle, ok := engine.Pool_Get(g.entity_pool, variant.attached_to)
 	if ok { 	// we are attached to a paddle
-		if rl.IsMouseButtonPressed(.LEFT) {
+		if rl.IsMouseButtonPressed(BALL_RELEASE_BUTTON) {
 			try_release_ball(self, variant)
 		} else {
 			paddle_transform := b2.Body_GetTransform(paddle.body_id)
