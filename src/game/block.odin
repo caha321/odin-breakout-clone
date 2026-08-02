@@ -111,7 +111,7 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		g.score += i32(variant.score_destroy)
 		position := b2.Body_GetPosition(entity.body_id)
 		position.y -= 5
-		Block_Break(entity, variant)
+		Block_Break(entity, variant, hit)
 		engine.Pool_Remove(&g.entity_pool, entity.body_id)
 
 		if rand.float32() < POWERUP_DROP_CHANCE {
@@ -123,16 +123,21 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 }
 
 // break the block into voronoi fragments in the background
-Block_Break :: proc(entity: ^Entity, variant: ^Block) {
+Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 	if int(variant.kind) > 6 {
 		log.error("Cannot fragment invalid block variant", variant)
 		return
 	}
 
-	seed_count := rand.int_range(7, 15)
+	seed_count := rand.int_range(7, 15) // TODO vary with hit.approachSpeed ?
 	log.debugf("Breaking block into %d fragments...", seed_count)
 
-	fragments := engine.generate_fractures({BLOCK_HALF_WIDTH, BLOCK_HALF_HEIGHT}, seed_count)
+	fragments := engine.generate_fractures(
+		{BLOCK_HALF_WIDTH, BLOCK_HALF_HEIGHT},
+		seed_count,
+		hit.point,
+		entity.body_id,
+	)
 	defer delete(fragments)
 
 	transform := b2.Body_GetTransform(entity.body_id)

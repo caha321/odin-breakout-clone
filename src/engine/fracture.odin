@@ -37,6 +37,57 @@ generate_seeds :: proc(half_extents: b2.Vec2, count: int, min_dist: f32) -> []b2
 	return seeds[:]
 }
 
+// Generates seeds with density falling off from `impact_local` (impact
+// point in block-local space). Seeds are denser near the impact and
+// sparser near the edges, mimicking how real fractures radiate outward
+// with finer cracking close to the point of contact.
+generate_seeds_biased :: proc(
+	half_extents: b2.Vec2,
+	count: int,
+	min_dist: f32,
+	impact_local: b2.Vec2,
+	falloff_radius: f32,
+) -> []b2.Vec2 {
+	seeds := make([dynamic]b2.Vec2, 0, count)
+	attempts := 0
+	max_attempts := count * 200
+
+	for len(seeds) < count && attempts < max_attempts {
+		attempts += 1
+		p := b2.Vec2 {
+			rand.float32_range(-half_extents.x, half_extents.x),
+			rand.float32_range(-half_extents.y, half_extents.y),
+		}
+
+		// Closer to impact => higher acceptance probability.
+		dist := linalg.distance(p, impact_local)
+		t := clamp(dist / falloff_radius, 0.0, 1.0)
+		accept_prob := 1.0 - t * 0.85 // never fully zero, so far corners still fracture some
+
+		if rand.float32() > accept_prob do continue
+
+		ok := true
+		for s in seeds {
+			if linalg.distance(s, p) < min_dist {
+				ok = false
+				break
+			}
+		}
+		if ok do append(&seeds, p)
+	}
+
+	// Fallback: if the biased pass starved out (falloff_radius too small
+	// relative to block size), top up with uniform seeds so the pattern
+	// still has enough sites to look right.
+	if len(seeds) < count {
+		uniform := generate_seeds(half_extents, count - len(seeds), min_dist)
+		for s in uniform do append(&seeds, s)
+		delete(uniform)
+	}
+
+	return seeds[:]
+}
+
 // -- Sutherland-Hodgman clip: keep the side closer to `keep_site` --
 // Caller owns the returned dynamic array
 @(private = "file")
@@ -82,9 +133,25 @@ uv_of :: proc "contextless" (p: b2.Vec2, half_extents: b2.Vec2) -> b2.Vec2 {
 // Generates `seed_count` random seeds, then computes each seed's Voronoi cell via half-plane clipping
 // Caller owns the returned dynamic array
 @(require_results)
-generate_fractures :: proc(half_extents: b2.Vec2, seed_count: int) -> [dynamic]Fragment_Shape {
+generate_fractures :: proc(
+	half_extents: b2.Vec2,
+	seed_count: int,
+	impact_world: b2.Vec2,
+	body_id: b2.BodyId,
+) -> [dynamic]Fragment_Shape {
+	transform := b2.Body_GetTransform(body_id)
+	impact_local := b2.InvTransformPoint(transform, impact_world)
+
+	falloff_radius := (half_extents.x + half_extents.y) * 0.6 // ~60% of block "size"
 	min_dist := (half_extents.x + half_extents.y) / f32(seed_count)
-	seeds := generate_seeds(half_extents, seed_count, min_dist)
+
+	seeds := generate_seeds_biased(
+		half_extents,
+		seed_count,
+		min_dist,
+		impact_local,
+		falloff_radius,
+	)
 	defer delete(seeds)
 
 	hw, hh := half_extents.x, half_extents.y
