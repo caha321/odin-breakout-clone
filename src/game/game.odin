@@ -316,7 +316,6 @@ draw_background :: proc(texture: rl.Texture2D) {
 
 Game_Render :: proc() {
 	render_start := time.tick_now()
-	// TODO blend stuff
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
 

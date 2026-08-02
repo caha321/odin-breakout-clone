@@ -10,7 +10,7 @@ import "../engine"
 
 BALL_RADIUS :: 1
 BALL_SPEED_INITIAL :: 25
-BALL_RELEASE_BUTTON: rl.MouseButton : .LEFT
+BALL_RELEASE_BUTTON :: rl.MouseButton.LEFT
 REATTACH_COOLDOWN :: 0.3
 
 Ball_Kind :: enum u8 {
@@ -83,19 +83,20 @@ Ball_Draw :: proc(self: ^Entity) {
 		return
 	}
 
-	pos := b2.Body_GetPosition(self.body_id)
-	rot := b2.Body_GetRotation(self.body_id)
-	angle_deg := rl.RAD2DEG * b2.Rot_GetAngle(rot)
-	screen_pos := world_to_screen(pos)
+	rt := get_render_transform_blended(
+		self.previous_transform,
+		b2.Body_GetTransform(self.body_id),
+		alpha = g.accumulated_time / DT,
+	)
 
 	diameter: f32 = BALL_RADIUS * 2 * PPM
 	rl_texture := g.textures[ball_kind_to_texture[self.variant.(Ball).kind]]
 
 	source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
-	dest := rl.Rectangle{screen_pos.x, screen_pos.y, diameter, diameter}
+	dest := rl.Rectangle{rt.screen_position.x, rt.screen_position.y, diameter, diameter}
 	origin := rl.Vector2{diameter / 2, diameter / 2} // center pivot
 
-	rl.DrawTexturePro(rl_texture, source, dest, origin, -angle_deg, rl.WHITE)
+	rl.DrawTexturePro(rl_texture, source, dest, origin, -rt.angle_deg, rl.WHITE)
 }
 
 try_attach_ball :: proc(paddle_entity, ball_entity: ^Entity) -> bool {
@@ -133,6 +134,8 @@ try_release_ball :: proc(ball_entity: ^Entity, variant: ^Ball) -> bool {
 }
 
 Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
+	self.previous_transform = b2.Body_GetTransform(self.body_id)
+
 	paddle, ok := engine.Pool_Get(g.entity_pool, variant.attached_to)
 	if ok { 	// we are attached to a paddle
 		if rl.IsMouseButtonPressed(BALL_RELEASE_BUTTON) {

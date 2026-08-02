@@ -14,8 +14,9 @@ Entity_Variant :: union {
 }
 
 Entity :: struct {
-	body_id: b2.BodyId,
-	variant: Entity_Variant,
+	body_id:            b2.BodyId,
+	previous_transform: b2.Transform, // used for blending, set by entities themselves
+	variant:            Entity_Variant,
 }
 
 Entity_Draw :: proc(entity: ^Entity) {
