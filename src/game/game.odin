@@ -287,14 +287,40 @@ check_sensor_events :: proc() {
 
 debug_draw := init_debug_draw()
 
+draw_background :: proc(texture: rl.Texture2D) {
+	sw := f32(rl.GetScreenWidth())
+	sh := f32(rl.GetScreenHeight())
+	tw := f32(texture.width)
+	th := f32(texture.height)
+
+	// scale so the texture covers the whole screen, cropping the overflow
+	scale := max(sw / tw, sh / th)
+
+	dest_w := tw * scale
+	dest_h := th * scale
+
+	// center it
+	dest := rl.Rectangle {
+		x      = (sw - dest_w) * 0.5,
+		y      = (sh - dest_h) * 0.5,
+		width  = dest_w,
+		height = dest_h,
+	}
+
+	src := rl.Rectangle{0, 0, tw, th}
+
+	rl.DrawTexturePro(texture, src, dest, rl.Vector2{0, 0}, 0, rl.WHITE)
+}
+
 Game_Render :: proc() {
 	render_start := time.tick_now()
 	// TODO blend stuff
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
-	rl.ClearBackground(rl.BEIGE)
 
-	// draw background first
+	draw_background(g.textures[.Background])
+
+	// draw background entities first
 	for &slot in g.entity_pool_background.slots {
 		if !engine.slot_valid(slot.generation) do continue
 		Entity_Draw(&slot.value)

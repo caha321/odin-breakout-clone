@@ -29,6 +29,7 @@ Texture :: enum {
 	BlockPurple,
 	BlockRed,
 	BlockYellow,
+	Background,
 }
 
 Music :: enum {
@@ -47,6 +48,8 @@ load_assets :: proc() -> bool {
 	load_texture("element_purple_rectangle.png", .BlockPurple) or_return
 	load_texture("element_red_rectangle.png", .BlockRed) or_return
 	load_texture("element_yellow_rectangle.png", .BlockYellow) or_return
+
+	load_texture("backgroundEmpty.png", .Background) or_return
 
 	load_sound("impactTin_medium_001.ogg", .HitBlock) or_return
 	load_sound("impactPlate_medium_000.ogg", .HitPaddle) or_return
