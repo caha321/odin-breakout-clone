@@ -17,7 +17,7 @@ create_ground :: proc(world_id: b2.WorldId, sensor: bool) {
 		ground_shape_def.isSensor = true
 		ground_shape_def.enableSensorEvents = true // shapes that we want to detect also need this set to true
 	}
-	ground_def.position = {0, -ARENA_HALF_WIDTH}
+	ground_def.position = {0, -ARENA_HALF_WIDTH - WALL_THICKNESS}
 	ground_id := b2.CreateBody(world_id, ground_def)
 	ground_box := b2.MakeBox(ARENA_HALF_WIDTH, WALL_THICKNESS)
 	_ = b2.CreatePolygonShape(ground_id, ground_shape_def, &ground_box)
