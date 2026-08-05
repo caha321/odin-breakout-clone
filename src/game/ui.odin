@@ -6,8 +6,10 @@ import rl "vendor:raylib"
 import "../engine"
 import "../engine/ui"
 
-BORDER_WIDTH := i32((ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * engine.screen.pixel_per_meter / 2)
-BORDER_COLOR :: rl.BLACK
+BORDER_WIDTH := i32(
+	(ARENA_HALF_WIDTH + WALL_HALF_THICKNESS * 2) * engine.screen.pixel_per_meter / 2,
+)
+BORDER_COLOR :: rl.Color{0, 0, 0, 192}
 
 UI_TEXT_Y :: 10
 UI_TEXT_X_BORDER_LEFT :: 10

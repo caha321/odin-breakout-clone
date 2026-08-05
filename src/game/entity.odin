@@ -42,6 +42,8 @@ Entity_Draw :: proc(entity: ^Entity) {
 	case Paddle:
 		Paddle_Draw(entity)
 	case Wall:
+		rt := engine.get_render_transform_static(b2.Body_GetTransform(entity.body_id))
+		engine.render(entity.render_data, rt)
 		break
 	case Powerup:
 		Powerup_Draw(entity, v)
