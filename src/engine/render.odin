@@ -86,7 +86,23 @@ RenderData :: struct {
 	tint:    rl.Color,
 }
 
-render :: proc(rd: RenderData, rt: RenderTransform) {
+@(private = "file")
+rectangle_get_dest_origin :: #force_inline proc(
+	shape: RenderShape_Rectangle,
+	rt: RenderTransform,
+) -> (
+	dest: rl.Rectangle,
+	origin: rl.Vector2,
+) {
+	width := shape.width * screen.pixel_per_meter // TODO scale via rl camera
+	height := shape.height * screen.pixel_per_meter
+
+	dest = rl.Rectangle{rt.screen_position.x, rt.screen_position.y, width, height}
+	origin = rl.Vector2{width / 2, height / 2}
+	return
+}
+
+render_texture :: proc(rd: RenderData, rt: RenderTransform) {
 	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
 	dest: rl.Rectangle
 	origin: rl.Vector2
@@ -99,12 +115,29 @@ render :: proc(rd: RenderData, rt: RenderTransform) {
 		origin = rl.Vector2{diameter / 2, diameter / 2} // center pivot
 
 	case RenderShape_Rectangle:
-		width := shape.width * screen.pixel_per_meter // TODO scale via rl camera
-		height := shape.height * screen.pixel_per_meter
-
-		dest = rl.Rectangle{rt.screen_position.x, rt.screen_position.y, width, height}
-		origin = rl.Vector2{width / 2, height / 2}
+		dest, origin = rectangle_get_dest_origin(shape, rt)
 	}
 
 	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
+}
+
+render :: proc(rd: RenderData, rt: RenderTransform) {
+	if rl.IsTextureValid(rd.texture) {
+		render_texture(rd, rt)
+		return
+	}
+	// else
+	switch shape in rd.shape {
+	case RenderShape_Circle:
+		rl.DrawCircle(
+			i32(rt.screen_position.x),
+			i32(rt.screen_position.y),
+			shape.diameter / 2 * screen.pixel_per_meter,
+			rd.tint,
+		)
+
+	case RenderShape_Rectangle:
+		dest, origin := rectangle_get_dest_origin(shape, rt)
+		rl.DrawRectanglePro(dest, origin, -rt.angle_deg, rd.tint)
+	}
 }
