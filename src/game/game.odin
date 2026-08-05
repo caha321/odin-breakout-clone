@@ -49,6 +49,7 @@ game_init :: proc() -> bool {
 
 	g = new(Game)
 	g.entity_pool.on_remove = Entity_Destroy
+	g.entity_pool_background.on_remove = Entity_Destroy
 	g.particle_system = engine.ParticleSystem_Init(capacity = 100)
 	load_assets() or_return
 	game_update_state(.New)
@@ -219,11 +220,16 @@ check_contact_events :: proc() {
 	for i in 0 ..< events.hitCount {
 		hit := events.hitEvents[i]
 
-		entity, ok := engine.Pool_Get(g.entity_pool, hit.shapeIdA)
-		if ok do Entity_Hit(entity, hit)
+		entity_a := engine.Pool_Get(g.entity_pool, hit.shapeIdA) or_continue
+		entity_b := engine.Pool_Get(g.entity_pool, hit.shapeIdB) or_continue
 
-		entity, ok = engine.Pool_Get(g.entity_pool, hit.shapeIdB)
-		if ok do Entity_Hit(entity, hit)
+		// entity_a was hit; normal points A -> B (away from A), as Box2D reports it
+		Entity_Hit(entity_a, entity_b, hit)
+
+		// entity_b was hit; normal needs to point B -> A instead
+		hit_b := hit
+		hit_b.normal = -hit.normal
+		Entity_Hit(entity_b, entity_a, hit_b)
 	}
 
 	for i in 0 ..< events.beginCount { 	// contact begin events

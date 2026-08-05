@@ -59,16 +59,25 @@ Entity_Update :: proc(entity: ^Entity, dt: f32) {
 	}
 }
 
-Entity_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
+Entity_Hit :: proc(entity, other: ^Entity, hit: b2.ContactHitEvent) {
+	if !b2.Body_IsValid(entity.body_id) do return
+	if !b2.Body_IsValid(other.body_id) do return
+
 	#partial switch &v in entity.variant {
 	case Block:
-		Block_Hit(entity, &v, hit)
+		ball, ok := other.variant.(Ball)
+		if ok {
+			Block_Hit(entity, &v, hit)
+		} else {
+			log.warn("Block hit by something else:", typeid_of(type_of(other.variant)))
+		}
 	case Paddle:
 		Paddle_Hit(entity, hit)
 	case Wall:
 		Wall_Hit(entity, hit)
 	}
 }
+
 
 Entity_Destroy :: proc(entity: ^Entity) {
 	if b2.Body_IsValid(entity.body_id) {

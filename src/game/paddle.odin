@@ -123,10 +123,10 @@ Paddle_SetSize :: proc(entity: ^Entity, variant: ^Paddle, size: Paddle_Size) {
 	variant.size = size
 
 	buffer: [2]b2.ShapeId
-	shapes := b2.Body_GetShapes(entity.body_id, buffer[:])
-	assert(len(shapes) > 0)
+	shape_ids := b2.Body_GetShapes(entity.body_id, buffer[:])
+	assert(len(shape_ids) > 0)
 
-	b2.Shape_SetCapsule(shapes[0], paddle_capsule(size))
+	b2.Shape_SetCapsule(shape_ids[0], paddle_capsule(size))
 	entity.render_data.shape = engine.RenderShape_Rectangle {
 		width  = paddle_half_width(variant.size) * 2,
 		height = PADDLE_HALF_HEIGHT * 2,
