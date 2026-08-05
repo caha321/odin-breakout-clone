@@ -26,14 +26,13 @@ Game :: struct {
 	music:                  [Music]rl.Music,
 	entity_pool:            engine.Pool(Entity),
 	entity_pool_background: engine.Pool(Entity),
-	particle_system:        ParticleSystem,
+	particle_system:        engine.ParticleSystem,
 	//
 	remaining_balls:        i32,
 	remaining_blocks:       i32,
 	ball_speed:             f32,
 	// physics stuff
 	world_id:               b2.WorldId,
-	world_id_background:    b2.WorldId,
 	draw_b2_debug:          bool,
 	accumulated_time:       f32,
 	tick_count:             u64, // total physics step count
@@ -50,8 +49,7 @@ game_init :: proc() -> bool {
 
 	g = new(Game)
 	g.entity_pool.on_remove = Entity_Destroy
-	g.entity_pool_background.on_remove = Entity_Destroy
-	g.particle_system = ParticleSystem_Init(capacity = 100)
+	g.particle_system = engine.ParticleSystem_Init(capacity = 100)
 	load_assets() or_return
 	game_update_state(.New)
 
@@ -85,13 +83,9 @@ game_restart :: proc() {
 	g.remaining_blocks = 0
 	g.tick_count = 0
 
-	g.world_id = World_Create(gravity = {0, 0})
-	create_bounds(g.world_id, true)
-	g.world_id_background = World_Create(gravity = {0, -10})
-	create_bounds(g.world_id_background, false)
-
-	Paddle_Create(background = false)
-	Paddle_Create(background = true)
+	g.world_id = World_Create(gravity = {0, -10}) // TODO defined by level
+	create_bounds(g.world_id)
+	Paddle_Create()
 	Ball_Create({0, 0})
 	blocks_create()
 }
@@ -99,17 +93,16 @@ game_restart :: proc() {
 game_clear_entities :: proc() {
 	engine.Pool_Clear(&g.entity_pool)
 	engine.Pool_Clear(&g.entity_pool_background)
-	ParticleSystem_Clear(&g.particle_system)
+	engine.ParticleSystem_Clear(&g.particle_system)
 
 	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
-	if b2.World_IsValid(g.world_id_background) do b2.DestroyWorld(g.world_id_background)
 }
 
 game_shutdown :: proc() {
 	game_clear_entities()
 	engine.Pool_Delete(g.entity_pool)
 	engine.Pool_Delete(g.entity_pool_background)
-	ParticleSystem_Destroy(g.particle_system)
+	engine.ParticleSystem_Destroy(g.particle_system)
 
 	for rl_texture, texture in g.textures {
 		if rl.IsTextureValid(rl_texture) {
@@ -201,17 +194,14 @@ Game_Update :: proc() {
 
 	for g.accumulated_time >= DT {
 		g.tick_count += 1
-		ParticleSystem_Update(&g.particle_system, DT)
-		for &slot in g.entity_pool_background.slots {
-			if !engine.slot_valid(slot.generation) do continue
-			Entity_Update(&slot.value, DT)
-		}
+		engine.ParticleSystem_Update(&g.particle_system, DT)
+
 		for &slot in g.entity_pool.slots {
 			if !engine.slot_valid(slot.generation) do continue
 			Entity_Update(&slot.value, DT)
 		}
+
 		b2.World_Step(g.world_id, DT, SUB_STEP_COUNT)
-		b2.World_Step(g.world_id_background, DT, SUB_STEP_COUNT)
 
 		check_sensor_events()
 		check_contact_events()
@@ -295,7 +285,7 @@ check_sensor_events :: proc() {
 }
 
 @(private = "file")
-debug_draw := init_debug_draw()
+debug_draw := engine.init_debug_draw()
 
 @(private = "file")
 draw_background :: proc(texture: rl.Texture2D) {
@@ -336,7 +326,7 @@ Game_Render :: proc() {
 		Entity_Draw(&slot.value)
 	}
 
-	ParticleSystem_Draw(&g.particle_system)
+	engine.ParticleSystem_Draw(&g.particle_system)
 
 	for &slot in g.entity_pool.slots {
 		if !engine.slot_valid(slot.generation) do continue
@@ -346,7 +336,6 @@ Game_Render :: proc() {
 	ui_draw()
 
 	if g.draw_b2_debug {
-		b2.World_Draw(g.world_id_background, &debug_draw)
 		b2.World_Draw(g.world_id, &debug_draw)
 	}
 
@@ -357,20 +346,21 @@ Game_Render :: proc() {
 
 Game_AddEntity :: proc(entity: Entity) {
 	assert(b2.IsValid(entity.body_id))
+	pool := &g.entity_pool
 
-	if b2.Body_GetWorld(entity.body_id) == g.world_id {
-		// inventory
-		#partial switch v in entity.variant {
-		case Ball:
-			g.remaining_balls += 1
-		case Block:
-			g.remaining_blocks += 1
-		}
-
-		engine.Pool_Add(&g.entity_pool, entity)
-		log.debug("Added entity to main pool", entity.body_id)
-	} else {
-		engine.Pool_Add(&g.entity_pool_background, entity)
-		log.debug("Added entity to background pool", entity.body_id)
+	#partial switch v in entity.variant {
+	case Fragment:
+		pool = &g.entity_pool_background
+	case Ball:
+		g.remaining_balls += 1
+	case Block:
+		g.remaining_blocks += 1
 	}
+
+	engine.Pool_Add(pool, entity)
+	log.debugf(
+		"Added entity to pool",
+		entity.body_id,
+		pool == &g.entity_pool_background ? "background" : "main",
+	)
 }

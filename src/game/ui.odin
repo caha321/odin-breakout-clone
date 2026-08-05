@@ -3,15 +3,16 @@ package game
 import "core:fmt"
 import rl "vendor:raylib"
 
+import "../engine"
 import "../engine/ui"
 
-BORDER_WIDTH :: (ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * PPM / 2
+BORDER_WIDTH := i32((ARENA_HALF_WIDTH + WALL_THICKNESS * 2) * engine.screen.pixel_per_meter / 2)
 BORDER_COLOR :: rl.BLACK
 
 UI_TEXT_Y :: 10
 UI_TEXT_X_BORDER_LEFT :: 10
-UI_TEXT_X_BORDER_RIGHT :: BORDER_WIDTH + (ARENA_HALF_WIDTH * 2 * PPM)
-UI_TEXT_X_OFFSET :: BORDER_WIDTH - 30
+UI_TEXT_X_BORDER_RIGHT := BORDER_WIDTH + i32(ARENA_HALF_WIDTH * 2 * engine.screen.pixel_per_meter)
+UI_TEXT_X_OFFSET := BORDER_WIDTH - 30
 
 UI_FONT_SIZE :: 40
 UI_FONT_COLOR :: rl.WHITE
@@ -62,8 +63,14 @@ UI_Update :: proc(dt: f32) {
 
 ui_draw :: proc() {
 	// borders
-	rl.DrawRectangle(0, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Left
-	rl.DrawRectangle(SCREEN_WIDTH - BORDER_WIDTH, 0, BORDER_WIDTH, SCREEN_HEIGHT, BORDER_COLOR) // Right
+	rl.DrawRectangle(0, 0, BORDER_WIDTH, engine.screen.height, BORDER_COLOR) // Left
+	rl.DrawRectangle(
+		engine.screen.width - BORDER_WIDTH,
+		0,
+		BORDER_WIDTH,
+		engine.screen.height,
+		BORDER_COLOR,
+	) // Right
 
 
 	text_y: i32 = UI_TEXT_Y
@@ -136,8 +143,8 @@ ui_draw :: proc() {
 		text_width := rl.MeasureText(text, font_size)
 		rl.DrawText(
 			text = text,
-			posX = (SCREEN_WIDTH - text_width) / 2,
-			posY = (SCREEN_HEIGHT / 2) + 70,
+			posX = (engine.screen.width - text_width) / 2,
+			posY = (engine.screen.height / 2) + 70,
 			fontSize = font_size,
 			color = rl.WHITE,
 		)
@@ -149,8 +156,8 @@ ui_draw :: proc() {
 		text_width := rl.MeasureText(text, font_size)
 		rl.DrawText(
 			text = text,
-			posX = (SCREEN_WIDTH - text_width) / 2,
-			posY = (SCREEN_HEIGHT / 2) + 70,
+			posX = (engine.screen.width - text_width) / 2,
+			posY = (engine.screen.height / 2) + 70,
 			fontSize = font_size,
 			color = rl.WHITE,
 		)
@@ -160,8 +167,8 @@ ui_draw :: proc() {
 		text_width := rl.MeasureText(text, font_size)
 		rl.DrawText(
 			text = text,
-			posX = (SCREEN_WIDTH - text_width) / 2,
-			posY = (SCREEN_HEIGHT / 2),
+			posX = (engine.screen.width - text_width) / 2,
+			posY = (engine.screen.height / 2),
 			fontSize = font_size,
 			color = rl.WHITE,
 		)

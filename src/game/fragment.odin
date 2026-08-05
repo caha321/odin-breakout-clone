@@ -4,6 +4,8 @@ import b2 "vendor:box2d"
 import rl "vendor:raylib/"
 import gl "vendor:raylib/rlgl"
 
+import "../engine"
+
 Fragment :: struct {
 	texture:  Texture,
 	vertices: []b2.Vec2, // local to body origin — same verts used for the physics shape
@@ -22,7 +24,7 @@ Fragment_Draw :: proc(entity: ^Entity, variant: Fragment) {
 	transform := b2.Body_GetTransform(entity.body_id)
 
 	world :: proc(local: b2.Vec2, transform: b2.Transform) -> b2.Vec2 {
-		return world_to_screen(b2.TransformPoint(transform, local))
+		return engine.world_to_screen(b2.TransformPoint(transform, local))
 	}
 
 	n := len(variant.vertices)

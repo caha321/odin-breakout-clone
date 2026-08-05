@@ -4,6 +4,8 @@ import "core:log"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+import "../engine"
+
 PADDLE_HALF_WIDTH :: f32(4)
 PADDLE_HALF_HEIGHT :: f32(0.8)
 PADDLE_Y :: f32(-20) // fixed height in world space
@@ -16,9 +18,7 @@ PADDLE_TILT_ANGULAR_GAIN :: f32(12) // how snappily rotation chases its target
 Paddle_Flag :: enum u8 {
 	Tilt_Enabled,
 	Sticky,
-	Background,
 }
-
 Paddle_Flags :: bit_set[Paddle_Flag]
 
 Paddle_Size :: enum u8 {
@@ -32,12 +32,12 @@ Paddle :: struct {
 	size:  Paddle_Size,
 }
 
-Paddle_Create :: proc(background: bool) {
+Paddle_Create :: proc() {
 	body_def := b2.DefaultBodyDef()
 	body_def.type = .kinematicBody // moved by player, not by physics forces
 	body_def.name = "paddle"
 	body_def.position = {0, PADDLE_Y}
-	body_id := b2.CreateBody(background ? g.world_id_background : g.world_id, body_def)
+	body_id := b2.CreateBody(g.world_id, body_def)
 
 	capsule := paddle_capsule(.Normal)
 	shape_def := b2.DefaultShapeDef()
@@ -45,17 +45,31 @@ Paddle_Create :: proc(background: bool) {
 	shape_def.enableHitEvents = true
 	shape_def.enableContactEvents = true // for sticky
 	shape_def.enableSensorEvents = true // for powerups
+	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
+	//shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
 	variant := Paddle{}
-	if background do variant.flags += {.Background}
 
-	Game_AddEntity({body_id = body_id, variant = variant})
+	Game_AddEntity(
+		{
+			body_id = body_id,
+			variant = variant,
+			render_data = {
+				texture = g.textures[.PaddleBlue],
+				shape = engine.RenderShape_Rectangle {
+					width = paddle_half_width(variant.size) * 2,
+					height = PADDLE_HALF_HEIGHT * 2,
+				},
+				tint = rl.WHITE,
+			},
+		},
+	)
 }
 
 // Call once per fixed physics step, BEFORE b2.World_Step
 Paddle_Update :: proc(self: ^Entity, variant: Paddle, dt: f32) {
-	target_world := screen_to_world(rl.GetMousePosition())
+	target_world := engine.screen_to_world(rl.GetMousePosition())
 	target_world.y = PADDLE_Y
 
 	x_max := paddle_x_max(variant.size)
@@ -89,25 +103,15 @@ Paddle_Update :: proc(self: ^Entity, variant: Paddle, dt: f32) {
 	}
 }
 
-Paddle_Draw :: proc(self: ^Entity, variant: Paddle) {
+Paddle_Draw :: proc(self: ^Entity) {
 	// background paddle is just for interacting with fragments
-	if .Background in variant.flags do return
-
-	rt := get_render_transform_blended(
+	rt := engine.get_render_transform_blended(
 		self.previous_transform,
 		b2.Body_GetTransform(self.body_id),
 		alpha = g.accumulated_time / DT,
 	)
 
-	width := paddle_half_width(variant.size) * 2 * PPM
-	height := PADDLE_HALF_HEIGHT * 2 * PPM
-	paddle_texture := g.textures[.PaddleBlue]
-
-	source := rl.Rectangle{0, 0, f32(paddle_texture.width), f32(paddle_texture.height)}
-	dest := rl.Rectangle{rt.screen_position.x, rt.screen_position.y, width, height}
-	origin := rl.Vector2{width / 2, height / 2}
-
-	rl.DrawTexturePro(paddle_texture, source, dest, origin, -rt.angle_deg, rl.WHITE)
+	engine.render(self.render_data, rt)
 }
 
 Paddle_Hit :: proc(entity: ^Entity, hit: b2.ContactHitEvent) {
@@ -123,6 +127,10 @@ Paddle_SetSize :: proc(entity: ^Entity, variant: ^Paddle, size: Paddle_Size) {
 	assert(len(shapes) > 0)
 
 	b2.Shape_SetCapsule(shapes[0], paddle_capsule(size))
+	entity.render_data.shape = engine.RenderShape_Rectangle {
+		width  = paddle_half_width(variant.size) * 2,
+		height = PADDLE_HALF_HEIGHT * 2,
+	}
 }
 
 Paddle_ApplyPowerup :: proc(entity: ^Entity, variant: ^Paddle, powerup: Powerup_Kind) {

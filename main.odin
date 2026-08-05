@@ -13,7 +13,7 @@ import "src/game"
 run :: proc() -> bool {
 	rl.SetTraceLogLevel(.WARNING)
 	rl.SetConfigFlags({.VSYNC_HINT})
-	rl.InitWindow(game.SCREEN_WIDTH, game.SCREEN_HEIGHT, "Breakout!")
+	rl.InitWindow(engine.screen.width, engine.screen.height, "Breakout!")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(75)

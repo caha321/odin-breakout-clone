@@ -1,4 +1,4 @@
-package game
+package engine
 
 import "core:math/linalg"
 import rl "vendor:raylib"
@@ -57,7 +57,7 @@ ParticleSystem_Draw :: proc "contextless" (self: ^ParticleSystem) {
 		if !p.active do continue
 
 		t := 1 - (p.life_remaining / p.life_total)
-		size := linalg.lerp(p.size_begin, p.size_end, t) * PPM
+		size := linalg.lerp(p.size_begin, p.size_end, t) * screen.pixel_per_meter
 		color := rl.ColorLerp(p.color_begin, p.color_end, t)
 		color = rl.ColorAlpha(color, p.life_remaining / p.life_total)
 		screen_pos := world_to_screen(p.position)

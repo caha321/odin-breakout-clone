@@ -4,6 +4,8 @@ import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
+import "../engine"
+
 Powerup_Kind :: enum u8 {
 	Invalid,
 	ExtraBall,
@@ -82,12 +84,12 @@ kind_to_text := [Powerup_Kind]cstring {
 
 Powerup_Draw :: proc(entity: ^Entity, variant: Powerup) {
 	pos := b2.Body_GetPosition(entity.body_id)
-	screen_pos := world_to_screen(pos)
+	screen_pos := engine.world_to_screen(pos)
 
 	rl.DrawCircle(
 		i32(screen_pos.x),
 		i32(screen_pos.y),
-		POWER_UP_RADIUS * PPM,
+		POWER_UP_RADIUS * engine.screen.pixel_per_meter,
 		kind_to_color[variant.kind],
 	)
 

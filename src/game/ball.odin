@@ -18,6 +18,12 @@ Ball_Kind :: enum u8 {
 	Grey,
 }
 
+@(private = "file")
+ball_kind_to_texture := [Ball_Kind]Texture {
+	.Blue = .BallBlue,
+	.Grey = .BallGrey,
+}
+
 Ball :: struct {
 	kind:              Ball_Kind,
 	damage:            u8,
@@ -32,6 +38,7 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	ball_def.position = world_position
 	ball_def.name = "ball"
 	ball_def.linearVelocity = random_ball_velocity(BALL_SPEED_INITIAL)
+	ball_def.gravityScale = 0.25 // TODO defined by level
 	body_id := b2.CreateBody(g.world_id, ball_def)
 
 	circle := b2.Circle {
@@ -44,6 +51,8 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	shape_def.material.restitution = 1.0 // perfectly elastic bounce
 	shape_def.enableSensorEvents = true // required on both sides
 	shape_def.enableHitEvents = true
+	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
+	shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
 	_ = b2.CreateCircleShape(body_id, shape_def, &circle)
 
 	Game_AddEntity(
@@ -52,6 +61,11 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 			variant = Ball {
 				damage = 1, // TODO feature: deal more damage to blocks
 				kind   = kind,
+			},
+			render_data = {
+				texture = g.textures[ball_kind_to_texture[kind]],
+				shape = engine.RenderShape_Circle{diameter = BALL_RADIUS * 2},
+				tint = rl.WHITE,
 			},
 		},
 	)
@@ -71,32 +85,14 @@ random_ball_velocity :: proc(speed: f32) -> [2]f32 {
 	return {math.cos(angle) * speed, math.sin(angle) * speed}
 }
 
-@(private = "file")
-ball_kind_to_texture := [Ball_Kind]Texture {
-	.Blue = .BallBlue,
-	.Grey = .BallGrey,
-}
-
 Ball_Draw :: proc(self: ^Entity) {
-	if !b2.IsValid(self.body_id) {
-		log.debug("Cannot draw ball without valid body!")
-		return
-	}
-
-	rt := get_render_transform_blended(
+	rt := engine.get_render_transform_blended(
 		self.previous_transform,
 		b2.Body_GetTransform(self.body_id),
 		alpha = g.accumulated_time / DT,
 	)
 
-	diameter: f32 = BALL_RADIUS * 2 * PPM
-	rl_texture := g.textures[ball_kind_to_texture[self.variant.(Ball).kind]]
-
-	source := rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)}
-	dest := rl.Rectangle{rt.screen_position.x, rt.screen_position.y, diameter, diameter}
-	origin := rl.Vector2{diameter / 2, diameter / 2} // center pivot
-
-	rl.DrawTexturePro(rl_texture, source, dest, origin, -rt.angle_deg, rl.WHITE)
+	engine.render(self.render_data, rt)
 }
 
 try_attach_ball :: proc(paddle_entity, ball_entity: ^Entity) -> bool {
@@ -163,7 +159,7 @@ Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
 	}
 
 	if g.tick_count % 3 == 0 {
-		ParticleSystem_Emit(
+		engine.ParticleSystem_Emit(
 			&g.particle_system,
 			{
 				shape       = .Circle,

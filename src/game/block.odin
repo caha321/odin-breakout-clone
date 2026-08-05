@@ -60,11 +60,21 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	shape_def.enableHitEvents = true
 	shape_def.material.friction = 0.1
 	shape_def.material.restitution = 1.0 // bricks bounce the ball cleanly, like the paddle
+	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
+	shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
 	_ = b2.CreatePolygonShape(body_id, shape_def, &box)
 
 	Game_AddEntity(
 		{
 			body_id = body_id,
+			render_data = {
+				texture = g.textures[block_kind_to_texture[kind]],
+				shape = engine.RenderShape_Rectangle {
+					width = BLOCK_HALF_WIDTH * 2,
+					height = BLOCK_HALF_HEIGHT * 2,
+				},
+				tint = rl.WHITE,
+			},
 			variant = Block{health = 1, score_hit = 1, score_destroy = score, kind = kind},
 		},
 	)
@@ -81,24 +91,13 @@ block_kind_to_texture := [Block_Kind]Texture {
 }
 
 Block_Draw :: proc(entity: ^Entity, variant: Block) {
-	if variant.health <= 0 do return
+	if variant.health <= 0 {
+		log.warn("Tryed to draw a dead block. skipping")
+		return
+	}
 
-	pos := b2.Body_GetPosition(entity.body_id)
-	screen_pos := world_to_screen(pos)
-
-	width: f32 = BLOCK_HALF_WIDTH * 2 * PPM
-	height: f32 = BLOCK_HALF_HEIGHT * 2 * PPM
-
-	rl_texture := g.textures[block_kind_to_texture[variant.kind]]
-
-	rl.DrawTexturePro(
-		rl_texture,
-		source = rl.Rectangle{0, 0, f32(rl_texture.width), f32(rl_texture.height)},
-		dest = rl.Rectangle{screen_pos.x, screen_pos.y, width, height},
-		origin = rl.Vector2{width / 2, height / 2},
-		rotation = 0,
-		tint = rl.WHITE,
-	)
+	rt := engine.get_render_transform_static(b2.Body_GetTransform(entity.body_id))
+	engine.render(entity.render_data, rt)
 }
 
 Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
@@ -150,7 +149,7 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		body_def.type = .dynamicBody
 		body_def.position = world_centroid
 		body_def.rotation = transform.q
-		frag_body := b2.CreateBody(g.world_id_background, body_def)
+		frag_body := b2.CreateBody(g.world_id, body_def)
 
 		hull := b2.ComputeHull(frag.vertices)
 		poly := b2.MakePolygon(hull, 0.0)
@@ -159,6 +158,7 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		shape_def.density = 1.0
 		shape_def.material.friction = 0.3
 		shape_def.material.restitution = 0.1
+		shape_def.filter.categoryBits = u64(Category_Flags{.Background})
 		_ = b2.CreatePolygonShape(frag_body, shape_def, &poly)
 
 		dir := linalg.normalize(frag.centroid)

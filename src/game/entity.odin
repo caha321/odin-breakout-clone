@@ -3,6 +3,7 @@ package game
 import "core:log"
 import b2 "vendor:box2d"
 
+import "../engine"
 
 Entity_Variant :: union {
 	Ball,
@@ -16,17 +17,30 @@ Entity_Variant :: union {
 Entity :: struct {
 	body_id:            b2.BodyId,
 	previous_transform: b2.Transform, // used for blending, set by entities themselves
+	render_data:        engine.RenderData,
 	variant:            Entity_Variant,
 }
 
+// box2d filter category
+Category_Flag :: enum u64 {
+	Foreground,
+	Background,
+}
+Category_Flags :: bit_set[Category_Flag]
+
 Entity_Draw :: proc(entity: ^Entity) {
+	if !b2.IsValid(entity.body_id) {
+		log.debug("Cannot draw entity without valid body!")
+		return
+	}
+
 	switch v in entity.variant {
 	case Ball:
 		Ball_Draw(entity)
 	case Block:
 		Block_Draw(entity, v)
 	case Paddle:
-		Paddle_Draw(entity, v)
+		Paddle_Draw(entity)
 	case Wall:
 		break
 	case Powerup:
