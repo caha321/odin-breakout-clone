@@ -40,7 +40,8 @@ main :: proc() {
 	context.logger = log.create_console_logger(lowest = log_level)
 	defer log.destroy_console_logger(context.logger)
 
-	if !engine.run(1920, 1280, game.Game_Run) {
+	zoom_world :: game.ARENA_HALF_HEIGHT * 2
+	if !engine.run(1920, 1280, zoom_world, game.Game_Run) {
 		os.exit(1)
 	}
 

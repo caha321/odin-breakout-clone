@@ -13,7 +13,7 @@ Screen :: struct {
 screen := Screen{}
 camera := rl.Camera2D{}
 
-run :: proc(width, height: i32, run_proc: proc() -> bool) -> bool {
+run :: proc(width, height: i32, zoom_world: f32, run_proc: proc() -> bool) -> bool {
 	rl.SetTraceLogLevel(.WARNING)
 	rl.SetConfigFlags({.VSYNC_HINT})
 	rl.InitWindow(width, height, "Break the Blocks!")
@@ -25,7 +25,7 @@ run :: proc(width, height: i32, run_proc: proc() -> bool) -> bool {
 		offset   = {f32(screen.width) / 2, f32(screen.height) / 2}, // world origin -> screen center
 		target   = {0, 0}, // world point at screen center
 		rotation = 0,
-		zoom     = 20, // TODO
+		zoom     = f32(screen.height) / zoom_world,
 	}
 
 	defer rl.CloseWindow()
