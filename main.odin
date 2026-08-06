@@ -5,21 +5,9 @@ import "core:log"
 import "core:mem"
 import "core:os"
 import b2 "vendor:box2d"
-import rl "vendor:raylib"
 
 import "src/engine"
 import "src/game"
-
-run :: proc() -> bool {
-	rl.SetTraceLogLevel(.WARNING)
-	rl.SetConfigFlags({.VSYNC_HINT})
-	rl.InitWindow(engine.screen.width, engine.screen.height, "Breakout!")
-	defer rl.CloseWindow()
-
-	rl.SetTargetFPS(75)
-
-	return game.Game_Run()
-}
 
 
 main :: proc() {
@@ -52,7 +40,7 @@ main :: proc() {
 	context.logger = log.create_console_logger(lowest = log_level)
 	defer log.destroy_console_logger(context.logger)
 
-	if !run() {
+	if !engine.run(1920, 1280, game.Game_Run) {
 		os.exit(1)
 	}
 

@@ -6,22 +6,33 @@ import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 Screen :: struct {
-	width:           i32,
-	height:          i32,
-	pixel_per_meter: f32,
+	width:  i32,
+	height: i32,
 }
 
-screen := Screen {
-	width           = 1920,
-	height          = 1280,
-	pixel_per_meter = 20,
-}
+screen := Screen{}
+camera := rl.Camera2D{}
 
-camera := rl.Camera2D {
-	offset   = {f32(screen.width) / 2, f32(screen.height) / 2}, // world origin -> screen center
-	target   = {0, 0}, // world point at screen center
-	rotation = 0,
-	zoom     = screen.pixel_per_meter,
+run :: proc(width, height: i32, run_proc: proc() -> bool) -> bool {
+	rl.SetTraceLogLevel(.WARNING)
+	rl.SetConfigFlags({.VSYNC_HINT})
+	rl.InitWindow(width, height, "Break the Blocks!")
+
+	screen.width = width
+	screen.height = height
+
+	camera = rl.Camera2D {
+		offset   = {f32(screen.width) / 2, f32(screen.height) / 2}, // world origin -> screen center
+		target   = {0, 0}, // world point at screen center
+		rotation = 0,
+		zoom     = 20, // TODO
+	}
+
+	defer rl.CloseWindow()
+
+	rl.SetTargetFPS(75)
+
+	return run_proc()
 }
 
 

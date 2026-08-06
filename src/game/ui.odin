@@ -6,16 +6,6 @@ import rl "vendor:raylib"
 import "../engine"
 import "../engine/ui"
 
-BORDER_WIDTH := i32(
-	(ARENA_HALF_WIDTH + WALL_HALF_THICKNESS * 2) * engine.screen.pixel_per_meter / 2,
-)
-BORDER_COLOR :: rl.Color{0, 0, 0, 192}
-
-UI_TEXT_Y :: 10
-UI_TEXT_X_BORDER_LEFT :: 10
-UI_TEXT_X_BORDER_RIGHT := BORDER_WIDTH + i32(ARENA_HALF_WIDTH * 2 * engine.screen.pixel_per_meter)
-UI_TEXT_X_OFFSET := BORDER_WIDTH - 30
-
 UI_FONT_SIZE :: 40
 UI_FONT_COLOR :: rl.WHITE
 
@@ -64,6 +54,14 @@ UI_Update :: proc(dt: f32) {
 }
 
 ui_draw :: proc() {
+	BORDER_WIDTH := i32((ARENA_HALF_WIDTH + WALL_HALF_THICKNESS * 2) * engine.camera.zoom / 2)
+	BORDER_COLOR :: rl.Color{0, 0, 0, 192}
+
+	UI_TEXT_Y :: 10
+	UI_TEXT_X_BORDER_LEFT :: 10
+	UI_TEXT_X_BORDER_RIGHT := BORDER_WIDTH + i32(ARENA_HALF_WIDTH * 2 * engine.camera.zoom)
+	UI_TEXT_X_OFFSET := BORDER_WIDTH - 30
+
 	// borders
 	rl.DrawRectangle(0, 0, BORDER_WIDTH, engine.screen.height, BORDER_COLOR) // Left
 	rl.DrawRectangle(
