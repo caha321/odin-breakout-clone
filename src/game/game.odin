@@ -187,6 +187,7 @@ Game_Update :: proc() {
 
 	frame_time := rl.GetFrameTime()
 	UI_Update(frame_time)
+	engine.shake_update(frame_time)
 
 	if g.state == .Running {
 		g.accumulated_time += frame_time
@@ -267,7 +268,10 @@ check_sensor_events :: proc() {
 			g.remaining_balls -= 1
 			engine.Pool_Remove(&g.entity_pool, event.visitorShapeId)
 			// only play sound if it does not overlap with game over sound
-			if g.remaining_balls > 0 do rl.PlaySound(g.sounds[.BallLost])
+			if g.remaining_balls > 0 {
+				engine.shake_add_trauma(.5)
+				rl.PlaySound(g.sounds[.BallLost])
+			}
 
 		case Paddle:
 			powerup: Powerup
@@ -286,6 +290,7 @@ check_sensor_events :: proc() {
 	}
 
 	if g.remaining_balls <= 0 {
+		engine.shake_add_trauma(1)
 		game_update_state(.GameOver)
 	}
 }
