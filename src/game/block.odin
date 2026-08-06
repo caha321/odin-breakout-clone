@@ -161,8 +161,8 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		shape_def.filter.categoryBits = u64(Category_Flags{.Background})
 		_ = b2.CreatePolygonShape(frag_body, shape_def, &poly)
 
-		dir := linalg.normalize(frag.centroid)
-		b2.Body_ApplyLinearImpulseToCenter(frag_body, dir * 1.5, true)
+		//dir := linalg.normalize(frag.centroid)
+		b2.Body_ApplyLinearImpulseToCenter(frag_body, -hit.normal * (hit.approachSpeed / 3), true)
 
 		texture := block_kind_to_texture[variant.kind]
 

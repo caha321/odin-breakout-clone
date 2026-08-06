@@ -86,16 +86,15 @@ Powerup_Draw :: proc(entity: ^Entity, variant: Powerup) {
 	pos := b2.Body_GetPosition(entity.body_id)
 	screen_pos := engine.world_to_screen(pos)
 
-	rl.DrawCircle(
-		i32(screen_pos.x),
-		i32(screen_pos.y),
-		POWER_UP_RADIUS * engine.screen.pixel_per_meter,
-		kind_to_color[variant.kind],
-	)
+	rl.DrawCircleV(screen_pos, POWER_UP_RADIUS, kind_to_color[variant.kind])
 
-	font_size :: 30
+	font := rl.GetFontDefault()
+	font_size := 30 / engine.camera.zoom
+	font_spacing := 1 / engine.camera.zoom
 	text := kind_to_text[variant.kind]
-	text_x := i32(screen_pos.x) - rl.MeasureText(text, font_size) / 2
-	text_y := i32(screen_pos.y) - font_size / 2
-	rl.DrawText(text, text_x, text_y, font_size, rl.WHITE)
+
+	text_measure := rl.MeasureTextEx(font, text, font_size, font_spacing)
+
+	text_position := [2]f32{screen_pos.x - text_measure.x / 2, screen_pos.y - text_measure.y / 2}
+	rl.DrawTextEx(font, text, text_position, font_size, font_spacing, rl.WHITE)
 }

@@ -57,16 +57,16 @@ ParticleSystem_Draw :: proc "contextless" (self: ^ParticleSystem) {
 		if !p.active do continue
 
 		t := 1 - (p.life_remaining / p.life_total)
-		size := linalg.lerp(p.size_begin, p.size_end, t) * screen.pixel_per_meter
+		size := linalg.lerp(p.size_begin, p.size_end, t)
 		color := rl.ColorLerp(p.color_begin, p.color_end, t)
 		color = rl.ColorAlpha(color, p.life_remaining / p.life_total)
 		screen_pos := world_to_screen(p.position)
 
 		switch p.shape {
 		case .Rectangle:
-			rl.DrawRectangle(i32(screen_pos.x), i32(screen_pos.y), i32(size), i32(size), color)
+			rl.DrawRectangleV(screen_pos, {size, size}, color)
 		case .Circle:
-			rl.DrawCircle(i32(screen_pos.x), i32(screen_pos.y), size, color)
+			rl.DrawCircleV(screen_pos, size, color)
 		}
 	}
 }

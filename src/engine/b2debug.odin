@@ -82,7 +82,7 @@ draw_solid_polygon :: proc "c" (
 
 draw_circle :: proc "c" (center: [2]f32, radius: f32, color: b2.HexColor, ctx: rawptr) {
 	p := world_to_screen(center)
-	rl.DrawCircleLinesV(p, radius * screen.pixel_per_meter, hex_to_rl_color(color))
+	rl.DrawCircleLinesV(p, radius, hex_to_rl_color(color))
 }
 
 draw_solid_circle :: proc "c" (
@@ -92,7 +92,7 @@ draw_solid_circle :: proc "c" (
 	ctx: rawptr,
 ) {
 	p := world_to_screen(transform.p)
-	rl.DrawCircleV(p, radius * screen.pixel_per_meter, hex_to_rl_color(color, 150))
+	rl.DrawCircleV(p, radius, hex_to_rl_color(color, 150))
 	// Draw a radius line so rotation is visible on circles too
 	axis := b2.RotateVector(transform.q, {radius, 0})
 	edge := world_to_screen(transform.p + axis)
@@ -102,9 +102,9 @@ draw_solid_circle :: proc "c" (
 draw_solid_capsule :: proc "c" (p1, p2: [2]f32, radius: f32, color: b2.HexColor, ctx: rawptr) {
 	a := world_to_screen(p1)
 	b := world_to_screen(p2)
-	rl.DrawCircleV(a, radius * screen.pixel_per_meter, hex_to_rl_color(color, 150))
-	rl.DrawCircleV(b, radius * screen.pixel_per_meter, hex_to_rl_color(color, 150))
-	rl.DrawLineEx(a, b, radius * screen.pixel_per_meter * 2, hex_to_rl_color(color, 150))
+	rl.DrawCircleV(a, radius, hex_to_rl_color(color, 150))
+	rl.DrawCircleV(b, radius, hex_to_rl_color(color, 150))
+	rl.DrawLineEx(a, b, radius * 2, hex_to_rl_color(color, 150))
 }
 
 draw_segment :: proc "c" (p1, p2: [2]f32, color: b2.HexColor, ctx: rawptr) {
@@ -124,6 +124,8 @@ draw_point :: proc "c" (p: [2]f32, size: f32, color: b2.HexColor, ctx: rawptr) {
 }
 
 draw_string :: proc "c" (p: [2]f32, s: cstring, color: b2.HexColor, ctx: rawptr) {
-	sp := world_to_screen(p)
-	rl.DrawText(s, i32(sp.x), i32(sp.y), 14, hex_to_rl_color(color))
+	font := rl.GetFontDefault()
+	font_size := 14 / camera.zoom
+	font_spacing := 1 / camera.zoom
+	rl.DrawTextEx(font, s, world_to_screen(p), font_size, font_spacing, hex_to_rl_color(color))
 }

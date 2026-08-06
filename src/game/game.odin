@@ -326,6 +326,8 @@ Game_Render :: proc() {
 
 	draw_background(g.textures[.Background])
 
+	rl.BeginMode2D(engine.camera)
+
 	// draw background entities first
 	for &slot in g.entity_pool_background.slots {
 		if !engine.slot_valid(slot.generation) do continue
@@ -339,12 +341,13 @@ Game_Render :: proc() {
 		Entity_Draw(&slot.value)
 	}
 
-	ui_draw()
-
 	if g.draw_b2_debug {
 		b2.World_Draw(g.world_id, &debug_draw)
 	}
 
+	rl.EndMode2D()
+
+	ui_draw()
 
 	g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
 }

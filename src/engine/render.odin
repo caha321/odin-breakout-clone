@@ -17,19 +17,21 @@ screen := Screen {
 	pixel_per_meter = 20,
 }
 
-
-world_to_screen :: proc "contextless" (p: [2]f32) -> [2]f32 {
-	return {
-		f32(screen.width) / 2 + p.x * screen.pixel_per_meter,
-		f32(screen.height) / 2 - p.y * screen.pixel_per_meter,
-	}
+camera := rl.Camera2D {
+	offset   = {f32(screen.width) / 2, f32(screen.height) / 2}, // world origin -> screen center
+	target   = {0, 0}, // world point at screen center
+	rotation = 0,
+	zoom     = screen.pixel_per_meter,
 }
 
-screen_to_world :: proc "contextless" (p: [2]f32) -> [2]f32 {
-	return {
-		(p.x - f32(screen.width) / 2) / screen.pixel_per_meter,
-		(f32(screen.height) / 2 - p.y) / screen.pixel_per_meter,
-	}
+
+world_to_screen :: #force_inline proc "contextless" (p: [2]f32) -> [2]f32 {
+	return {p.x, -p.y} // rl y is opposite direction than box2d
+}
+
+screen_to_world :: #force_inline proc "contextless" (p: [2]f32) -> [2]f32 {
+	world := rl.GetScreenToWorld2D(p, camera)
+	return {world.x, -world.y}
 }
 
 
@@ -94,8 +96,8 @@ rectangle_get_dest_origin :: #force_inline proc(
 	dest: rl.Rectangle,
 	origin: rl.Vector2,
 ) {
-	width := shape.width * screen.pixel_per_meter // TODO scale via rl camera
-	height := shape.height * screen.pixel_per_meter
+	width := shape.width
+	height := shape.height
 
 	dest = rl.Rectangle{rt.screen_position.x, rt.screen_position.y, width, height}
 	origin = rl.Vector2{width / 2, height / 2}
@@ -109,7 +111,7 @@ render_texture :: proc(rd: RenderData, rt: RenderTransform) {
 
 	switch shape in rd.shape {
 	case RenderShape_Circle:
-		diameter := shape.diameter * screen.pixel_per_meter // TODO scale via rl camera
+		diameter := shape.diameter
 
 		dest = rl.Rectangle{rt.screen_position.x, rt.screen_position.y, diameter, diameter}
 		origin = rl.Vector2{diameter / 2, diameter / 2} // center pivot
@@ -132,7 +134,7 @@ render :: proc(rd: RenderData, rt: RenderTransform) {
 		rl.DrawCircle(
 			i32(rt.screen_position.x),
 			i32(rt.screen_position.y),
-			shape.diameter / 2 * screen.pixel_per_meter,
+			shape.diameter / 2,
 			rd.tint,
 		)
 
