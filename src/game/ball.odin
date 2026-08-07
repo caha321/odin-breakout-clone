@@ -158,21 +158,27 @@ Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
 		}
 	}
 
-	if g.tick_count % 3 == 0 {
-		engine.ParticleSystem_Emit(
-			&g.particle_system,
-			{
-				render_data = {shape = engine.RenderShape_Circle{}},
-				position = self.previous_transform.p,
-				// no velocity, strictly a trail
-				color_begin = rl.GRAY if variant.kind == .Grey else rl.BLUE,
-				color_end = rl.WHITE,
-				size_begin = BALL_RADIUS * 2,
-				size_end = .5,
-				life_total = 1,
-			},
-		)
+	// particle trail
+
+	render_data := engine.RenderData {
+		shape   = engine.RenderShape_Circle{},
+		texture = g.textures[.ParticleCircle5],
+		blend   = .ADDITIVE,
 	}
+	engine.ParticleSystem_Emit(
+		&g.particle_system,
+		{
+			render_data = render_data,
+			position    = self.previous_transform.p,
+			// no velocity, strictly a trail
+			color_begin = rl.GRAY if variant.kind == .Grey else rl.BLUE,
+			color_end   = rl.BLACK,
+			size_begin  = BALL_RADIUS * 2.5,
+			size_end    = .5,
+			life_total  = .5,
+		},
+	)
+
 }
 
 /*

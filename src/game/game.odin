@@ -50,7 +50,7 @@ game_init :: proc() -> bool {
 	g = new(Game)
 	g.entity_pool.on_remove = Entity_Destroy
 	g.entity_pool_background.on_remove = Entity_Destroy
-	g.particle_system = engine.ParticleSystem_Init(capacity = 100)
+	g.particle_system = engine.ParticleSystem_Init(capacity = 200)
 	load_assets() or_return
 	game_update_state(.New)
 

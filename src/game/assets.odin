@@ -30,6 +30,7 @@ Texture :: enum {
 	BlockRed,
 	BlockYellow,
 	Background,
+	ParticleCircle5,
 }
 
 Music :: enum {
@@ -50,6 +51,8 @@ load_assets :: proc() -> bool {
 	load_texture("element_yellow_rectangle.png", .BlockYellow) or_return
 
 	load_texture("backgroundEmpty.png", .Background) or_return
+
+	load_texture("particles/circle_05.png", .ParticleCircle5) or_return
 
 	load_sound("impactTin_medium_001.ogg", .HitBlock) or_return
 	load_sound("impactPlate_medium_000.ogg", .HitPaddle) or_return

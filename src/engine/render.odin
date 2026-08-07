@@ -105,6 +105,7 @@ RenderData :: struct {
 	texture: rl.Texture2D,
 	shape:   RenderShape,
 	tint:    rl.Color,
+	blend:   rl.BlendMode,
 }
 
 @(private = "file")
@@ -139,7 +140,9 @@ render_texture :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 		dest, origin = rectangle_get_dest_origin(shape, rt)
 	}
 
+	rl.BeginBlendMode(rd.blend) // TODO
 	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
+	rl.EndBlendMode()
 }
 
 render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
