@@ -74,8 +74,16 @@ get_render_transform_static :: proc "contextless" (transform: b2.Transform) -> R
 	}
 }
 
+get_render_transform_static_particle :: proc "contextless" (
+	position: [2]f32,
+	angle_deg: f32,
+) -> RenderTransform {
+	return RenderTransform{screen_position = world_to_screen(position), angle_deg = angle_deg}
+}
+
 get_render_transform :: proc {
 	get_render_transform_static,
+	get_render_transform_static_particle,
 	get_render_transform_blended,
 }
 
@@ -100,7 +108,7 @@ RenderData :: struct {
 }
 
 @(private = "file")
-rectangle_get_dest_origin :: #force_inline proc(
+rectangle_get_dest_origin :: #force_inline proc "contextless" (
 	shape: RenderShape_Rectangle,
 	rt: RenderTransform,
 ) -> (
@@ -115,7 +123,7 @@ rectangle_get_dest_origin :: #force_inline proc(
 	return
 }
 
-render_texture :: proc(rd: RenderData, rt: RenderTransform) {
+render_texture :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
 	dest: rl.Rectangle
 	origin: rl.Vector2
@@ -134,7 +142,7 @@ render_texture :: proc(rd: RenderData, rt: RenderTransform) {
 	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
 }
 
-render :: proc(rd: RenderData, rt: RenderTransform) {
+render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	if rl.IsTextureValid(rd.texture) {
 		render_texture(rd, rt)
 		return
@@ -142,12 +150,7 @@ render :: proc(rd: RenderData, rt: RenderTransform) {
 	// else
 	switch shape in rd.shape {
 	case RenderShape_Circle:
-		rl.DrawCircle(
-			i32(rt.screen_position.x),
-			i32(rt.screen_position.y),
-			shape.diameter / 2,
-			rd.tint,
-		)
+		rl.DrawCircleV(rt.screen_position, shape.diameter / 2, rd.tint)
 
 	case RenderShape_Rectangle:
 		dest, origin := rectangle_get_dest_origin(shape, rt)
