@@ -39,7 +39,7 @@ Fragment_Draw :: proc(entity: ^Entity, variant: Fragment) {
 		uv1 := variant.uvs[i]
 		uv2 := variant.uvs[i + 1]
 
-		gl.Color4ub(255, 255, 255, 128) // half transparent because so its less distracting (background)
+		gl.Color4ub(255, 255, 255, 64) // TODO alpha via options
 		gl.TexCoord2f(uv0.x, uv0.y); gl.Vertex2f(v0.x, v0.y)
 		gl.TexCoord2f(uv1.x, uv1.y); gl.Vertex2f(v1.x, v1.y)
 		gl.TexCoord2f(uv2.x, uv2.y); gl.Vertex2f(v2.x, v2.y)

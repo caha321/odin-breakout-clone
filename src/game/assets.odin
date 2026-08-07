@@ -107,7 +107,7 @@ load_music :: proc(file_name: cstring, music: Music) -> bool {
 play_hit_sound :: proc(sound: Sound, hit: b2.ContactHitEvent) {
 	rl_sound := g.sounds[sound]
 	if rl.IsSoundValid(rl_sound) {
-		volume := clamp(hit.approachSpeed / 15.0, 0.2, 1.0)
+		volume := clamp(hit.approachSpeed / 15.0, 0.0, g.config.audio.hit_sound_volume)
 		pan := clamp(hit.point.x / ARENA_HALF_WIDTH, -1, 1)
 
 		rl.SetSoundPan(rl_sound, pan)

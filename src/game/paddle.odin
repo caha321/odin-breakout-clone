@@ -46,7 +46,7 @@ Paddle_Create :: proc() {
 	shape_def.enableContactEvents = true // for sticky
 	shape_def.enableSensorEvents = true // for powerups
 	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
-	//shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
+	//shape_def.filter.maskBits = u64(Category_Flags{.Foreground, .Ba})
 	_ = b2.CreateCapsuleShape(body_id, shape_def, &capsule)
 
 	variant := Paddle{}

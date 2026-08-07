@@ -51,8 +51,8 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	shape_def.material.restitution = 1.0 // perfectly elastic bounce
 	shape_def.enableSensorEvents = true // required on both sides
 	shape_def.enableHitEvents = true
-	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
-	shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
+	shape_def.filter.categoryBits = u64(Category_Flags{.Ball})
+	shape_def.filter.maskBits = u64(Category_Flags{.Foreground, .Ball})
 	_ = b2.CreateCircleShape(body_id, shape_def, &circle)
 
 	Game_AddEntity(

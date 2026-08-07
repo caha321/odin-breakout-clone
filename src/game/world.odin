@@ -17,7 +17,7 @@ create_ground :: proc(world_id: b2.WorldId) {
 	shape_def_foreground.isSensor = true
 	shape_def_foreground.enableSensorEvents = true // shapes that we want to detect also need this set to true
 	shape_def_foreground.filter.categoryBits = u64(Category_Flags{.Foreground})
-	shape_def_foreground.filter.maskBits = u64(Category_Flags{.Foreground})
+	shape_def_foreground.filter.maskBits = u64(Category_Flags{.Foreground, .Ball})
 
 	shape_def_background := b2.DefaultShapeDef() // ground is solid for background
 	shape_def_background.filter.categoryBits = u64(Category_Flags{.Background})

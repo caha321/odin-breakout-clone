@@ -23,6 +23,7 @@ Entity :: struct {
 
 // box2d filter category
 Category_Flag :: enum u64 {
+	Ball,
 	Foreground,
 	Background,
 }

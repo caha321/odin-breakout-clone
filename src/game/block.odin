@@ -61,7 +61,7 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	shape_def.material.friction = 0.1
 	shape_def.material.restitution = 1.0 // bricks bounce the ball cleanly, like the paddle
 	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
-	shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
+	//shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
 	_ = b2.CreatePolygonShape(body_id, shape_def, &box)
 
 	Game_AddEntity(

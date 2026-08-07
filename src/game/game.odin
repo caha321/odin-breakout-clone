@@ -20,6 +20,7 @@ Game_State :: enum {
 
 Game :: struct {
 	state:                  Game_State,
+	config:                 Config,
 	player:                 Player,
 	textures:               [Texture]rl.Texture2D,
 	sounds:                 [Sound]rl.Sound,
@@ -53,6 +54,7 @@ game_init :: proc() -> bool {
 	g.particle_system = engine.ParticleSystem_Init(capacity = 200)
 	load_assets() or_return
 	game_update_state(.New)
+	g.config = engine.Config_Init(CONFIG_FILE_NAME, DEFAULT_CONFIG)
 
 	return true
 }
@@ -62,7 +64,7 @@ Game_Run :: proc() -> bool {
 	defer game_shutdown()
 
 	rl.PlayMusicStream(g.music[.Game])
-	rl.SetMusicVolume(g.music[.Game], 0.4) // TODI via Options menu
+	rl.SetMusicVolume(g.music[.Game], g.config.audio.music_volume)
 
 	for !rl.WindowShouldClose() {
 		Game_Update()
@@ -127,6 +129,8 @@ game_shutdown :: proc() {
 	}
 
 	rl.CloseAudioDevice()
+
+	engine.Config_Write(g.config, CONFIG_FILE_NAME)
 
 	free(g)
 }
