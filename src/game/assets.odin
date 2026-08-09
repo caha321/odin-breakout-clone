@@ -31,6 +31,12 @@ Texture :: enum {
 	BlockYellow,
 	Background,
 	ParticleCircle5,
+	// Powerups
+	PowerupExtraBall,
+	PowerupPaddleSmall,
+	PowerupPaddleWide,
+	PowerupPaddleSticky,
+	PowerupPaddleTilt,
 }
 
 Music :: enum {
@@ -53,6 +59,8 @@ load_assets :: proc() -> bool {
 	load_texture("backgroundEmpty.png", .Background) or_return
 
 	load_texture("particles/circle_05.png", .ParticleCircle5) or_return
+
+	create_powerup_textures()
 
 	load_sound("impactTin_medium_001.ogg", .HitBlock) or_return
 	load_sound("impactPlate_medium_000.ogg", .HitPaddle) or_return

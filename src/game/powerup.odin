@@ -30,7 +30,7 @@ Powerup :: struct {
 	kind: Powerup_Kind,
 }
 
-POWER_UP_RADIUS :: 1
+POWERUP_RADIUS :: 1
 POWERUP_FALL_SPEED_MIN :: 5
 POWERUP_FALL_SPEED_MAX :: 20
 POWERUP_DROP_CHANCE :: .5 // TODO too high, just for testing
@@ -48,7 +48,7 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 	body_id := b2.CreateBody(g.world_id, body_def)
 
 	circle := b2.Circle {
-		radius = POWER_UP_RADIUS,
+		radius = POWERUP_RADIUS,
 	}
 	shape_def := b2.DefaultShapeDef()
 	shape_def.enableSensorEvents = true
@@ -57,7 +57,17 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 
 	kind := kind
 	if kind == .Invalid do kind = rand.choice(POWERUP_KINDS)
-	Game_AddEntity({body_id = body_id, variant = Powerup{kind = kind}})
+	Game_AddEntity(
+		{
+			body_id = body_id,
+			render_data = {
+				texture = g.textures[kind_to_texture[kind]],
+				shape = engine.RenderShape_Circle{diameter = POWERUP_RADIUS * 2},
+				tint = rl.WHITE,
+			},
+			variant = Powerup{kind = kind},
+		},
+	)
 }
 
 
@@ -82,19 +92,36 @@ kind_to_text := [Powerup_Kind]cstring {
 	.PaddleTilt   = "T",
 }
 
-Powerup_Draw :: proc(entity: ^Entity, variant: Powerup) {
-	pos := b2.Body_GetPosition(entity.body_id)
-	screen_pos := engine.world_to_screen(pos)
+@(private = "file")
+kind_to_texture := [Powerup_Kind]Texture {
+	.Invalid      = .NoTexture,
+	.ExtraBall    = .PowerupExtraBall,
+	.PaddleSmall  = .PowerupPaddleSmall,
+	.PaddleWide   = .PowerupPaddleWide,
+	.PaddleSticky = .PowerupPaddleSticky,
+	.PaddleTilt   = .PowerupPaddleTilt,
+}
 
-	rl.DrawCircleV(screen_pos, POWER_UP_RADIUS, kind_to_color[variant.kind])
-
+create_powerup_textures :: proc() {
 	font := rl.GetFontDefault()
-	font_size := 30 / engine.camera.zoom
-	font_spacing := 1 / engine.camera.zoom
-	text := kind_to_text[variant.kind]
+	font_spacing :: 1
+	font_size :: 100
+	img_size :: 128
+	circle_radius :: 64
 
-	text_measure := rl.MeasureTextEx(font, text, font_size, font_spacing)
+	for kind in Powerup_Kind {
+		text := kind_to_text[kind]
+		text_measure := rl.MeasureTextEx(font, text, font_size, font_spacing)
 
-	text_position := [2]f32{screen_pos.x - text_measure.x / 2, screen_pos.y - text_measure.y / 2}
-	rl.DrawTextEx(font, text, text_position, font_size, font_spacing, rl.WHITE)
+		img := rl.GenImageColor(img_size, img_size, rl.BLANK)
+
+		center := [2]f32{img_size / 2, img_size / 2}
+		rl.ImageDrawCircleV(&img, center, circle_radius, kind_to_color[kind])
+
+		text_position := center - (text_measure / 2)
+		rl.ImageDrawTextEx(&img, font, text, text_position, font_size, font_spacing, rl.WHITE)
+
+		g.textures[kind_to_texture[kind]] = rl.LoadTextureFromImage(img)
+		rl.UnloadImage(img)
+	}
 }
