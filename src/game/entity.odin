@@ -5,6 +5,8 @@ import b2 "vendor:box2d"
 
 import "../engine"
 
+Fragment :: struct {} // TODO remove
+
 Entity_Variant :: union {
 	Ball,
 	Block,
@@ -43,13 +45,14 @@ Entity_Draw :: proc(entity: ^Entity) {
 	case Paddle:
 		Paddle_Draw(entity)
 	case Wall:
-		rt := engine.get_render_transform_static(b2.Body_GetTransform(entity.body_id))
+		rt := engine.get_render_transform(b2.Body_GetTransform(entity.body_id))
 		engine.render(entity.render_data, rt)
 		break
 	case Powerup:
 		Powerup_Draw(entity, v)
 	case Fragment:
-		Fragment_Draw(entity, v)
+		rt := engine.get_render_transform(b2.Body_GetTransform(entity.body_id))
+		engine.render(entity.render_data, rt)
 	}
 }
 
@@ -92,10 +95,5 @@ Entity_Destroy :: proc(entity: ^Entity) {
 		)
 		b2.DestroyBody(entity.body_id)
 	}
-	#partial switch &v in entity.variant {
-	case Fragment:
-		delete(v.uvs)
-		delete(v.vertices)
-		log.debug("Fragment variant destroyed")
-	}
+	engine.RenderData_Destroy(entity.render_data)
 }

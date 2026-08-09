@@ -169,8 +169,12 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		Game_AddEntity(
 			{
 				body_id = frag_body,
-				render_data = {texture = texture, tint = {255, 255, 255, 64}}, // TODO alpha via options,
-				variant = Fragment{vertices = frag.vertices, uvs = frag.uvs},
+				render_data = {
+					texture = texture,
+					tint = {255, 255, 255, 64}, // TODO alpha via options,
+					shape = engine.RenderShape_Polygon{vertices = frag.vertices, uvs = frag.uvs},
+				},
+				variant = Fragment{},
 			},
 		)
 	}

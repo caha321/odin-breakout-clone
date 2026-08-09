@@ -58,7 +58,7 @@ ParticleSystem_Draw :: proc "contextless" (self: ^ParticleSystem) {
 		color = rl.ColorAlpha(color, p.life_remaining / p.life_total)
 
 		// update render data
-		switch &v in p.render_data.shape {
+		#partial switch &v in p.render_data.shape {
 		case RenderShape_Circle:
 			v.diameter = size
 		case RenderShape_Rectangle:

@@ -4,6 +4,7 @@ import "core:math"
 import "core:math/linalg"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
+import "vendor:raylib/rlgl"
 
 Screen :: struct {
 	width:  i32,
@@ -96,9 +97,15 @@ RenderShape_Rectangle :: struct {
 	height: f32,
 }
 
+RenderShape_Polygon :: struct {
+	vertices: [][2]f32, // local to body origin — same verts used for the physics shape
+	uvs:      [][2]f32,
+}
+
 RenderShape :: union {
 	RenderShape_Circle,
 	RenderShape_Rectangle,
+	RenderShape_Polygon,
 }
 
 RenderData :: struct {
@@ -106,6 +113,14 @@ RenderData :: struct {
 	shape:   RenderShape,
 	tint:    rl.Color,
 	blend:   rl.BlendMode,
+}
+
+RenderData_Destroy :: proc(rd: RenderData) {
+	#partial switch shape in rd.shape {
+	case RenderShape_Polygon:
+		delete(shape.uvs)
+		delete(shape.vertices)
+	}
 }
 
 @(private = "file")
@@ -124,39 +139,131 @@ rectangle_get_dest_origin :: #force_inline proc "contextless" (
 	return
 }
 
-render_texture :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
+render_texture_circle :: proc "contextless" (
+	rd: RenderData,
+	shape: RenderShape_Circle,
+	rt: RenderTransform,
+) {
 	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
-	dest: rl.Rectangle
-	origin: rl.Vector2
-
-	switch shape in rd.shape {
-	case RenderShape_Circle:
-		diameter := shape.diameter
-
-		dest = rl.Rectangle{rt.screen_position.x, rt.screen_position.y, diameter, diameter}
-		origin = rl.Vector2{diameter / 2, diameter / 2} // center pivot
-
-	case RenderShape_Rectangle:
-		dest, origin = rectangle_get_dest_origin(shape, rt)
+	dest := rl.Rectangle {
+		rt.screen_position.x,
+		rt.screen_position.y,
+		shape.diameter,
+		shape.diameter,
 	}
+	origin := rl.Vector2{shape.diameter / 2, shape.diameter / 2} // center pivot
 
 	rl.BeginBlendMode(rd.blend) // TODO
 	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
 	rl.EndBlendMode()
 }
 
-render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
-	if rl.IsTextureValid(rd.texture) {
-		render_texture(rd, rt)
-		return
+render_texture_rectangle :: proc "contextless" (
+	rd: RenderData,
+	shape: RenderShape_Rectangle,
+	rt: RenderTransform,
+) {
+	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
+	dest, origin := rectangle_get_dest_origin(shape, rt)
+
+	rl.BeginBlendMode(rd.blend) // TODO
+	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
+	rl.EndBlendMode()
+}
+
+// Pushes the rlgl matrix stack and applies rt (rotate Z -> flip Y -> translate),
+// converting Box2D's Y-up world space to screen's Y-down space. Caller must
+// call `rlgl.PopMatrix()` when done drawing.
+@(private = "file")
+push_render_transform :: #force_inline proc "contextless" (rt: RenderTransform) {
+	rlgl.PushMatrix()
+	rlgl.Translatef(rt.screen_position.x, rt.screen_position.y, z = 0)
+	rlgl.Scalef(1, -1, 1) // flip Y: Box2D (Y-up) → screen (Y-down)
+	rlgl.Rotatef(rt.angle_deg, x = 0, y = 0, z = 1)
+}
+
+render_texture_polygon :: proc "contextless" (
+	rd: RenderData,
+	shape: RenderShape_Polygon,
+	rt: RenderTransform,
+) {
+	n := len(shape.vertices)
+	if n < 3 do return
+
+	push_render_transform(rt)
+	defer rlgl.PopMatrix()
+
+	rlgl.Begin(rlgl.TRIANGLES)
+	defer rlgl.End()
+
+	rlgl.SetTexture(rd.texture.id)
+	defer rlgl.SetTexture(0)
+
+	v0 := shape.vertices[0]
+	uv0 := shape.uvs[0]
+
+	for i in 1 ..< n - 1 {
+		v1 := shape.vertices[i]
+		v2 := shape.vertices[i + 1]
+		uv1 := shape.uvs[i]
+		uv2 := shape.uvs[i + 1]
+
+		rlgl.Color4ub(rd.tint.r, rd.tint.g, rd.tint.b, rd.tint.a)
+		rlgl.TexCoord2f(uv0.x, uv0.y); rlgl.Vertex2f(v0.x, v0.y)
+		rlgl.TexCoord2f(uv1.x, uv1.y); rlgl.Vertex2f(v1.x, v1.y)
+		rlgl.TexCoord2f(uv2.x, uv2.y); rlgl.Vertex2f(v2.x, v2.y)
 	}
-	// else
+}
+
+render_polygon :: proc "contextless" (
+	rd: RenderData,
+	shape: RenderShape_Polygon,
+	rt: RenderTransform,
+) {
+	n := len(shape.vertices)
+	if n < 3 do return
+
+	push_render_transform(rt)
+	defer rlgl.PopMatrix()
+
+	rlgl.Begin(rlgl.TRIANGLES)
+	defer rlgl.End()
+
+	v0 := shape.vertices[0]
+
+	for i in 1 ..< n - 1 {
+		v1 := shape.vertices[i]
+		v2 := shape.vertices[i + 1]
+
+		rlgl.Color4ub(rd.tint.r, rd.tint.g, rd.tint.b, rd.tint.a)
+		rlgl.Vertex2f(v0.x, v0.y)
+		rlgl.Vertex2f(v1.x, v1.y)
+		rlgl.Vertex2f(v2.x, v2.y)
+	}
+}
+
+render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	switch shape in rd.shape {
 	case RenderShape_Circle:
-		rl.DrawCircleV(rt.screen_position, shape.diameter / 2, rd.tint)
+		if rl.IsTextureValid(rd.texture) {
+			render_texture_circle(rd, shape, rt)
+		} else {
+			rl.DrawCircleV(rt.screen_position, shape.diameter / 2, rd.tint)
+		}
 
 	case RenderShape_Rectangle:
-		dest, origin := rectangle_get_dest_origin(shape, rt)
-		rl.DrawRectanglePro(dest, origin, -rt.angle_deg, rd.tint)
+		if rl.IsTextureValid(rd.texture) {
+			render_texture_rectangle(rd, shape, rt)
+		} else {
+			dest, origin := rectangle_get_dest_origin(shape, rt)
+			rl.DrawRectanglePro(dest, origin, -rt.angle_deg, rd.tint)
+		}
+
+	case RenderShape_Polygon:
+		if rl.IsTextureValid(rd.texture) {
+			render_texture_polygon(rd, shape, rt)
+		} else {
+			render_polygon(rd, shape, rt)
+		}
 	}
 }
