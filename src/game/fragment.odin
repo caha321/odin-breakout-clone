@@ -7,7 +7,6 @@ import gl "vendor:raylib/rlgl"
 import "../engine"
 
 Fragment :: struct {
-	texture:  Texture,
 	vertices: []b2.Vec2, // local to body origin — same verts used for the physics shape
 	uvs:      []b2.Vec2,
 }
@@ -17,7 +16,7 @@ Fragment_Draw :: proc(entity: ^Entity, variant: Fragment) {
 	gl.Begin(gl.TRIANGLES)
 	defer gl.End()
 
-	rl_texture := g.textures[variant.texture]
+	rl_texture := entity.render_data.texture
 	gl.SetTexture(rl_texture.id)
 	defer gl.SetTexture(0)
 

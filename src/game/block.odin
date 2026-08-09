@@ -164,12 +164,13 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		//dir := linalg.normalize(frag.centroid)
 		b2.Body_ApplyLinearImpulseToCenter(frag_body, -hit.normal * (hit.approachSpeed / 3), true)
 
-		texture := block_kind_to_texture[variant.kind]
+		texture := g.textures[block_kind_to_texture[variant.kind]]
 
 		Game_AddEntity(
 			{
 				body_id = frag_body,
-				variant = Fragment{texture = texture, vertices = frag.vertices, uvs = frag.uvs},
+				render_data = {texture = texture},
+				variant = Fragment{vertices = frag.vertices, uvs = frag.uvs},
 			},
 		)
 	}
