@@ -3,6 +3,7 @@ package engine
 import "core:math/linalg"
 import "core:math/rand"
 import b2 "vendor:box2d"
+import rl "vendor:raylib"
 
 
 Fragment_Shape :: struct {
@@ -197,4 +198,43 @@ generate_fractures :: proc(
 	}
 
 	return fragments
+}
+
+@(require_results)
+create_fracture_mesh :: proc(vertices_in: [][2]f32, uvs_in: [][2]f32) -> RenderShape_Mesh {
+	allocator := rl.MemAllocator() // we need to use this allocator for memory that rl will free
+	vertex_count := len(vertices_in)
+	triangle_count := vertex_count - 2 // fan triangulation of a convex n-gon
+
+	mesh: rl.Mesh
+	mesh.vertexCount = i32(vertex_count)
+	mesh.triangleCount = i32(triangle_count)
+
+
+	mesh_vertices := make([]f32, vertex_count * 3, allocator)
+	mesh_texcoords := make([]f32, vertex_count * 2, allocator)
+	for i in 0 ..< vertex_count {
+		mesh_vertices[i * 3 + 0] = vertices_in[i].x
+		mesh_vertices[i * 3 + 1] = vertices_in[i].y
+		mesh_vertices[i * 3 + 2] = 0 // raylib meshes are 3D, we don't need it
+
+		mesh_texcoords[i * 2 + 0] = uvs_in[i].x
+		mesh_texcoords[i * 2 + 1] = uvs_in[i].y
+	}
+
+	// fan indices: (0,1,2), (0,2,3), (0,3,4), ...
+	mesh_indices := make([]u16, triangle_count * 3, allocator)
+	for i in 0 ..< triangle_count {
+		mesh_indices[i * 3 + 0] = 0
+		mesh_indices[i * 3 + 1] = u16(i + 1)
+		mesh_indices[i * 3 + 2] = u16(i + 2)
+	}
+
+	mesh.vertices = raw_data(mesh_vertices)
+	mesh.texcoords = raw_data(mesh_texcoords)
+	mesh.indices = raw_data(mesh_indices)
+
+	rl.UploadMesh(&mesh, is_dynamic = false) // GPU-resident, not re-uploaded
+
+	return {mesh = mesh}
 }

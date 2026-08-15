@@ -102,10 +102,15 @@ RenderShape_Polygon :: struct {
 	uvs:      [][2]f32,
 }
 
+RenderShape_Mesh :: struct {
+	mesh: rl.Mesh,
+}
+
 RenderShape :: union {
 	RenderShape_Circle,
 	RenderShape_Rectangle,
 	RenderShape_Polygon,
+	RenderShape_Mesh,
 }
 
 RenderData :: struct {
@@ -120,6 +125,8 @@ RenderData_Destroy :: proc(rd: RenderData) {
 	case RenderShape_Polygon:
 		delete(shape.uvs)
 		delete(shape.vertices)
+	case RenderShape_Mesh:
+		rl.UnloadMesh(shape.mesh)
 	}
 }
 
@@ -242,6 +249,24 @@ render_polygon :: proc "contextless" (
 	}
 }
 
+@(private = "file")
+render_transform_to_matrix :: #force_inline proc "contextless" (rt: RenderTransform) -> rl.Matrix {
+	translation := rl.MatrixTranslate(rt.screen_position.x, rt.screen_position.y, 0)
+	flip_y := rl.MatrixScale(1, -1, 1) // Box2D (Y-up) → screen (Y-down)
+	rotation := rl.MatrixRotateZ(rt.angle_deg * rl.DEG2RAD)
+
+	return translation * flip_y * rotation
+}
+
+render_mesh :: proc "contextless" (rd: RenderData, shape: RenderShape_Mesh, rt: RenderTransform) {
+	material := rl.LoadMaterialDefault()
+	material.maps[rl.MaterialMapIndex.ALBEDO].texture = rd.texture
+	material.maps[rl.MaterialMapIndex.ALBEDO].color = rd.tint
+
+	transform := render_transform_to_matrix(rt)
+	rl.DrawMesh(shape.mesh, material, transform)
+}
+
 render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	switch shape in rd.shape {
 	case RenderShape_Circle:
@@ -265,5 +290,7 @@ render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 		} else {
 			render_polygon(rd, shape, rt)
 		}
+	case RenderShape_Mesh:
+		render_mesh(rd, shape, rt) // TODO
 	}
 }

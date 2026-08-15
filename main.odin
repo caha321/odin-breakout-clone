@@ -31,6 +31,8 @@ main :: proc() {
 
 		print_struct_field_sizes(game.Entity)
 		print_union_variant_sizes(game.Entity_Variant)
+		print_struct_field_sizes(engine.RenderData)
+		print_union_variant_sizes(engine.RenderShape)
 		print_struct_field_sizes(engine.Slot(game.Entity))
 		print_struct_field_sizes(engine.Handle)
 	} else {

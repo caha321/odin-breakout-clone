@@ -164,18 +164,18 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		//dir := linalg.normalize(frag.centroid)
 		b2.Body_ApplyLinearImpulseToCenter(frag_body, -hit.normal * (hit.approachSpeed / 3), true)
 
-		texture := g.textures[block_kind_to_texture[variant.kind]]
-
 		Game_AddEntity(
 			{
 				body_id = frag_body,
 				render_data = {
-					texture = texture,
-					tint = {255, 255, 255, 64}, // TODO alpha via options,
-					shape = engine.RenderShape_Polygon{vertices = frag.vertices, uvs = frag.uvs},
+					texture = g.textures[block_kind_to_texture[variant.kind]],
+					tint    = {255, 255, 255, 64}, // TODO alpha via options,
+					shape   = engine.create_fracture_mesh(frag.vertices, frag.uvs),
 				},
 				variant = Fragment{},
 			},
 		)
+		delete(frag.vertices)
+		delete(frag.uvs)
 	}
 }
