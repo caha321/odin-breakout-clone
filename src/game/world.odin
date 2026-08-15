@@ -5,8 +5,30 @@ import rl "vendor:raylib"
 
 import "../engine"
 
-ARENA_HALF_WIDTH :: 32
-ARENA_HALF_HEIGHT :: 32
+
+BLOCK_ROWS :: 5
+BLOCK_COLS :: 9
+
+BLOCK_TOP_Y :: 20 // TODO
+
+blocks_create :: proc() {
+	row_kinds := [BLOCK_ROWS]Block_Kind{.Red, .Green, .Purple, .Grey, .Yellow}
+	row_scores := [BLOCK_ROWS]i8{20, 15, 10, 5, 1}
+
+	start_x :: -ARENA_HALF_WIDTH + WALL_HALF_THICKNESS + BLOCK_HALF_WIDTH
+
+	for row in 0 ..< BLOCK_ROWS {
+		for col in 0 ..< BLOCK_COLS {
+			x := start_x + f32(col) * (BLOCK_HALF_WIDTH * 2)
+			y := BLOCK_TOP_Y - f32(row) * (BLOCK_HALF_HEIGHT * 2)
+
+			Block_Create(position = {x, y}, kind = row_kinds[row], score = row_scores[row])
+		}
+	}
+}
+
+ARENA_HALF_WIDTH :: ((BLOCK_COLS) * BLOCK_HALF_WIDTH) + WALL_HALF_THICKNESS
+ARENA_HALF_HEIGHT :: ARENA_HALF_WIDTH
 WALL_HALF_THICKNESS :: 0.5
 
 Wall :: struct {}

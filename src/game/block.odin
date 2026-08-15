@@ -1,7 +1,6 @@
 package game
 
 import "core:log"
-import "core:math/linalg"
 import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
@@ -24,29 +23,8 @@ Block :: struct {
 	score_destroy: i8,
 }
 
-BLOCK_ROWS :: 5
-BLOCK_COLS :: 7
-
 BLOCK_HALF_WIDTH :: 3
 BLOCK_HALF_HEIGHT :: 1.5
-BLOCK_TOP_Y :: 20
-
-blocks_create :: proc() {
-	row_kinds := [BLOCK_ROWS]Block_Kind{.Red, .Green, .Purple, .Grey, .Yellow}
-	row_scores := [BLOCK_ROWS]i8{20, 15, 10, 5, 1}
-
-	total_width := f32(BLOCK_COLS) * (BLOCK_HALF_WIDTH * 2) - BLOCK_HALF_WIDTH
-	start_x := -total_width / 2
-
-	for row in 0 ..< BLOCK_ROWS {
-		for col in 0 ..< BLOCK_COLS {
-			x := start_x + f32(col) * (BLOCK_HALF_WIDTH * 2) + BLOCK_HALF_WIDTH / 2
-			y := BLOCK_TOP_Y - f32(row) * (BLOCK_HALF_HEIGHT * 2)
-
-			Block_Create(position = {x, y}, kind = row_kinds[row], score = row_scores[row])
-		}
-	}
-}
 
 Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	body_def := b2.DefaultBodyDef()
