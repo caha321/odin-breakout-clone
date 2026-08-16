@@ -4,12 +4,14 @@ import "core:fmt"
 import "core:math/rand"
 import rl "vendor:raylib"
 
+FONT_SPACING :: 1
+
 // The "Pop" effect scales the counter's rendered text up momentarily when its
 // value changes, then eases back down to normal size
 Effect_Pop :: struct {
 	_scale: f32, // DO NOT SET MANUALLY. Current scale multiplier applied to font size
-	amount: f32, // Scale to jump to the instant the counter's value changes. 1.4 means 40%
-	speed:  f32, // How quickly `scale` eases back toward 1.0. Higher values settle faster
+	amount: f32, // Scale to jump to the instant the counter's value changes. Default 1.4 means 40%
+	speed:  f32, // How quickly `scale` eases back toward 1.0. Default 12.0; Higher values settle faster
 }
 
 // The "Pulse" effect fades the counter's color from `color` back to the
@@ -37,6 +39,7 @@ Counter_Effect :: union {
 Counter :: struct {
 	value:                 i32, // DO NOT SET MANUALLY. Current value of the counter
 	base_color:            rl.Color,
+	font:                  ^rl.Font,
 	font_size:             f32,
 	// effects applied on value change
 	increase_effects:      [2]Counter_Effect,
@@ -44,17 +47,22 @@ Counter :: struct {
 	decrease_effects:      [2]Counter_Effect,
 	decrease_effect_count: u8,
 	active_is_increase:    bool, // whether increase effects are active
+	change_granularity:    i32, // effects trigger only when value/granularity changes; 0 or 1 = every change (default)
 }
 
 Counter_Create :: proc "contextless" (
 	base_color: rl.Color,
+	font: ^rl.Font,
 	font_size: f32,
 	on_increase: []Counter_Effect = {},
 	on_decrease: []Counter_Effect = {},
+	change_granularity: i32 = 1,
 ) -> Counter {
 	counter := Counter {
-		base_color = base_color,
-		font_size  = font_size,
+		base_color         = base_color,
+		font               = font,
+		font_size          = font_size,
+		change_granularity = change_granularity,
 	}
 	for effect, index in on_increase do counter.increase_effects[index] = effect
 	counter.increase_effect_count = u8(len(on_increase))
@@ -79,13 +87,17 @@ Counter_ActiveEffects :: proc "contextless" (
 }
 
 Counter_Update :: proc "contextless" (self: ^Counter, new_value: i32, dt: f32) {
+	granularity := self.change_granularity if self.change_granularity > 0 else 1
+	old_bucket := self.value / granularity
+	new_bucket := new_value / granularity
+
 	if new_value > self.value {
 		self.active_is_increase = true
 	} else if new_value < self.value {
 		self.active_is_increase = false
 	}
 
-	changed := new_value != self.value
+	changed := new_bucket != old_bucket
 	self.value = new_value
 
 	effects, count := Counter_ActiveEffects(self)
@@ -112,11 +124,16 @@ Text_Align :: enum {
 	Right,
 }
 
-Counter_Draw :: proc(self: ^Counter, pos: [2]i32, format: string, align: Text_Align = .Left) {
-	shake_offset := rl.Vector2{}
-	color := self.base_color
-	size := self.font_size
-	draw_pos: [2]f32 = {f32(pos.x), f32(pos.y)}
+@(private = "file")
+Counter_ComputeDrawState :: proc(
+	self: ^Counter,
+) -> (
+	size: f32,
+	color: rl.Color,
+	shake_offset: rl.Vector2,
+) {
+	color = self.base_color
+	size = self.font_size
 
 	effects, count := Counter_ActiveEffects(self)
 	for index in 0 ..< count {
@@ -134,16 +151,54 @@ Counter_Draw :: proc(self: ^Counter, pos: [2]i32, format: string, align: Text_Al
 			}
 		}
 	}
+	return
+}
 
-	draw_pos += shake_offset
-	text := fmt.ctprintf(format, self.value)
+@(private = "file")
+Counter_DrawText :: proc(
+	self: ^Counter,
+	text: cstring,
+	pos: [2]f32,
+	font_size: f32,
+	color: rl.Color,
+	shake_offset: rl.Vector2,
+	align: Text_Align,
+) {
+	draw_pos: [2]f32 = pos + shake_offset
+
+	assert(self.font != nil)
+
 	switch align {
 	case .Left:
-		break // no change
+		break
 	case .Center:
-		draw_pos.x -= f32(rl.MeasureText(text, i32(size))) / 2
+		draw_pos.x -= rl.MeasureTextEx(self.font^, text, font_size, FONT_SPACING).x / 2
 	case .Right:
-		draw_pos.x -= f32(rl.MeasureText(text, i32(size)))
+		draw_pos.x -= rl.MeasureTextEx(self.font^, text, font_size, FONT_SPACING).x
 	}
-	rl.DrawText(text, i32(draw_pos.x), i32(draw_pos.y), i32(size), color)
+	rl.DrawTextEx(self.font^, text, draw_pos, font_size, FONT_SPACING, color)
+}
+
+Counter_Draw :: proc(self: ^Counter, pos: [2]f32, format: string, align: Text_Align = .Left) {
+	size, color, shake_offset := Counter_ComputeDrawState(self)
+	text := fmt.ctprintf(format, self.value)
+	Counter_DrawText(self, text, pos, size, color, shake_offset, align)
+}
+
+// Treats self.value as total milliseconds and draws it as mm:ss.mmm
+Counter_DrawTime :: proc(self: ^Counter, pos: [2]f32, align: Text_Align = .Left) {
+	size, color, shake_offset := Counter_ComputeDrawState(self)
+
+	total_ms := self.value
+	minutes := total_ms / 60000
+	seconds := (total_ms / 1000) % 60
+	milliseconds := total_ms % 1000
+
+	text: cstring
+	if minutes > 0 {
+		text = fmt.ctprintf("%d:%02d.%03d", minutes, seconds, milliseconds)
+	} else {
+		text = fmt.ctprintf("%d.%03d", seconds, milliseconds)
+	}
+	Counter_DrawText(self, text, pos, size, color, shake_offset, align)
 }

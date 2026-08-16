@@ -7,6 +7,7 @@ import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 import "../engine"
+import "../engine/ui"
 
 DT :: 1.0 / 60.0
 SUB_STEP_COUNT :: 4 // Box2D
@@ -22,9 +23,11 @@ Game :: struct {
 	state:                  Game_State,
 	config:                 Config,
 	player:                 Player,
+	ui:                     UI,
 	textures:               [Texture]rl.Texture2D,
 	sounds:                 [Sound]rl.Sound,
 	music:                  [Music]rl.Music,
+	font:                   rl.Font,
 	entity_pool:            engine.Pool(Entity),
 	entity_pool_background: engine.Pool(Entity),
 	particle_system:        engine.ParticleSystem,
@@ -52,7 +55,10 @@ game_init :: proc() -> bool {
 	g.entity_pool.on_remove = Entity_Destroy
 	g.entity_pool_background.on_remove = Entity_Destroy
 	g.particle_system = engine.ParticleSystem_Init(capacity = 200)
+
 	load_assets() or_return
+	UI_Init(&g.ui)
+
 	game_update_state(.New)
 	g.config = engine.Config_Init(CONFIG_FILE_NAME, DEFAULT_CONFIG)
 
@@ -190,7 +196,7 @@ Game_Update :: proc() {
 	rl.UpdateMusicStream(g.music[.Game])
 
 	frame_time := rl.GetFrameTime()
-	UI_Update(frame_time)
+	UI_Update(&g.ui, frame_time)
 	engine.shake_update(frame_time)
 
 	if g.state == .Running {
@@ -356,7 +362,7 @@ Game_Render :: proc() {
 
 	rl.EndMode2D()
 
-	ui_draw()
+	UI_Draw(&g.ui)
 
 	g.render_time_ms = time.duration_milliseconds(time.tick_since(render_start))
 }

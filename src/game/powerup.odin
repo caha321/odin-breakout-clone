@@ -103,7 +103,6 @@ kind_to_texture := [Powerup_Kind]Texture {
 }
 
 create_powerup_textures :: proc() {
-	font := rl.GetFontDefault()
 	font_spacing :: 1
 	font_size :: 100
 	img_size :: 128
@@ -111,7 +110,7 @@ create_powerup_textures :: proc() {
 
 	for kind in Powerup_Kind {
 		text := kind_to_text[kind]
-		text_measure := rl.MeasureTextEx(font, text, font_size, font_spacing)
+		text_measure := rl.MeasureTextEx(g.font, text, font_size, font_spacing)
 
 		img := rl.GenImageColor(img_size, img_size, rl.BLANK)
 
@@ -119,7 +118,7 @@ create_powerup_textures :: proc() {
 		rl.ImageDrawCircleV(&img, center, circle_radius, kind_to_color[kind])
 
 		text_position := center - (text_measure / 2)
-		rl.ImageDrawTextEx(&img, font, text, text_position, font_size, font_spacing, rl.WHITE)
+		rl.ImageDrawTextEx(&img, g.font, text, text_position, font_size, font_spacing, rl.WHITE)
 
 		g.textures[kind_to_texture[kind]] = rl.LoadTextureFromImage(img)
 		rl.UnloadImage(img)

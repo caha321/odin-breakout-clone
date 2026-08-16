@@ -60,6 +60,9 @@ load_assets :: proc() -> bool {
 
 	load_texture("particles/circle_05.png", .ParticleCircle5) or_return
 
+	g.font = rl.LoadFontEx("assets/DepartureMono-Regular.otf", 128, nil, 0)
+	if !rl.IsFontValid(g.font) do return false
+
 	create_powerup_textures()
 
 	load_sound("impactTin_medium_001.ogg", .HitBlock) or_return
