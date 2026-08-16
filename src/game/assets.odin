@@ -1,9 +1,9 @@
 package game
 
-import "core:fmt"
-import "core:log"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
+
+import "../engine"
 
 // all available sounds in the game
 Sound :: enum {
@@ -45,86 +45,44 @@ Music :: enum {
 }
 
 load_assets :: proc() -> bool {
-	load_texture("ballGrey.png", .BallGrey) or_return
-	load_texture("ballBlue.png", .BallBlue) or_return
-	load_texture("paddleBlu.png", .PaddleBlue) or_return
+	g.textures[.BallGrey] = engine.load_texture("ballGrey.png") or_return
+	g.textures[.BallBlue] = engine.load_texture("ballBlue.png") or_return
+	g.textures[.PaddleBlue] = engine.load_texture("paddleBlu.png") or_return
 
-	load_texture("element_blue_rectangle.png", .BlockBlue) or_return
-	load_texture("element_green_rectangle.png", .BlockGreen) or_return
-	load_texture("element_grey_rectangle.png", .BlockGrey) or_return
-	load_texture("element_purple_rectangle.png", .BlockPurple) or_return
-	load_texture("element_red_rectangle.png", .BlockRed) or_return
-	load_texture("element_yellow_rectangle.png", .BlockYellow) or_return
+	g.textures[.BlockBlue] = engine.load_texture("element_blue_rectangle.png") or_return
+	g.textures[.BlockGreen] = engine.load_texture("element_green_rectangle.png") or_return
+	g.textures[.BlockGrey] = engine.load_texture("element_grey_rectangle.png") or_return
+	g.textures[.BlockPurple] = engine.load_texture("element_purple_rectangle.png") or_return
+	g.textures[.BlockRed] = engine.load_texture("element_red_rectangle.png") or_return
+	g.textures[.BlockYellow] = engine.load_texture("element_yellow_rectangle.png") or_return
 
-	load_texture("backgroundEmpty.png", .Background) or_return
+	g.textures[.Background] = engine.load_texture("backgroundEmpty.png") or_return
 
-	load_texture("particles/circle_05.png", .ParticleCircle5) or_return
+	g.textures[.ParticleCircle5] = engine.load_texture("particles/circle_05.png") or_return
 
 	g.font = rl.LoadFontEx("assets/DepartureMono-Regular.otf", 128, nil, 0)
 	if !rl.IsFontValid(g.font) do return false
 
 	create_powerup_textures()
 
-	load_sound("impactTin_medium_001.ogg", .HitBlock) or_return
-	load_sound("impactPlate_medium_000.ogg", .HitPaddle) or_return
-	load_sound("impactMetal_medium_004.ogg", .HitWall) or_return
-	load_sound("jingles_PIZZI02.ogg", .GameStart) or_return
-	load_sound("jingles_PIZZI01.ogg", .GameOver) or_return
-	load_sound("lowDown.ogg", .BallLost) or_return
-	load_sound("powerUp2.ogg", .PowerupCollected) or_return
+	g.sounds[.HitBlock] = engine.load_sound("impactTin_medium_001.ogg") or_return
+	g.sounds[.HitPaddle] = engine.load_sound("impactPlate_medium_000.ogg") or_return
+	g.sounds[.HitWall] = engine.load_sound("impactMetal_medium_004.ogg") or_return
+	g.sounds[.GameStart] = engine.load_sound("jingles_PIZZI02.ogg") or_return
+	g.sounds[.GameOver] = engine.load_sound("jingles_PIZZI01.ogg") or_return
+	g.sounds[.BallLost] = engine.load_sound("lowDown.ogg") or_return
+	g.sounds[.PowerupCollected] = engine.load_sound("powerUp2.ogg") or_return
 
-	load_music("397 [Misc Extras] bgm_space_upbeat_F.ogg", .Game) or_return
+	g.music[.Game] = engine.load_music("397 [Misc Extras] bgm_space_upbeat_F.ogg") or_return
 
 	return true
 }
 
 
-load_texture :: proc(file_name: cstring, texture: Texture) -> bool {
-	file_name := fmt.ctprintf("assets/textures/%s", file_name)
-	rl_texture := rl.LoadTexture(file_name)
-	if rl_texture.id <= 0 {
-		log.error("Could not load texture:", file_name)
-		return false
-	}
-	log.info("Loading Texture:", file_name, "as", texture)
-	g.textures[texture] = rl_texture
-	return true
-}
-
-load_sound :: proc(file_name: cstring, sound: Sound) -> bool {
-	file_name := fmt.ctprintf("assets/sounds/%s", file_name)
-	rl_sound := rl.LoadSound(file_name)
-	if !rl.IsSoundValid(rl_sound) {
-		log.error("Could not load sound:", file_name)
-		return false
-	}
-	log.info("Loaded Sound:", file_name, "as", sound)
-	g.sounds[sound] = rl_sound
-	return true
-}
-
-load_music :: proc(file_name: cstring, music: Music) -> bool {
-	file_name := fmt.ctprintf("assets/music/%s", file_name)
-	rl_music := rl.LoadMusicStream(file_name)
-	if !rl.IsMusicValid(rl_music) {
-		log.error("Could not load music:", file_name)
-		return false
-	}
-	log.info("Loaded Music:", file_name, "as", music)
-	g.music[music] = rl_music
-	return true
-}
-
-play_hit_sound :: proc(sound: Sound, hit: b2.ContactHitEvent) {
-	rl_sound := g.sounds[sound]
-	if rl.IsSoundValid(rl_sound) {
-		volume := clamp(hit.approachSpeed / 15.0, 0.0, g.config.audio.hit_sound_volume)
-		pan := clamp(hit.point.x / ARENA_HALF_WIDTH, -1, 1)
-
-		rl.SetSoundPan(rl_sound, pan)
-		rl.SetSoundVolume(rl_sound, volume)
-		rl.PlaySound(rl_sound)
-	} else {
-		log.warn("Invalid sound!", sound)
-	}
+play_hit_sound :: #force_inline proc(
+	sound: Sound,
+	hit: b2.ContactHitEvent,
+	location := #caller_location,
+) {
+	engine.play_hit_sound(g.sounds[sound], hit.point, hit.approachSpeed, location = location)
 }
