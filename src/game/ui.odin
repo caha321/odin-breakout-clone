@@ -199,42 +199,27 @@ UI_Draw :: proc(self: ^UI) {
 
 	switch g.state {
 	case .New:
-		font_size :: 100
-		text: cstring = "Press SPACE to start"
-		text_width := rl.MeasureTextEx(g.font, text, font_size, UI_FONT_SPACING).x
-		rl.DrawTextEx(
+		ui.draw_text_with_background(
 			g.font,
-			text,
-			{(f32(engine.screen.width) - text_width) / 2, (f32(engine.screen.height) / 2) + 70},
-			font_size,
-			UI_FONT_SPACING,
-			rl.GRAY,
+			"Press SPACE to start",
+			{f32(engine.screen.width) / 2, f32(engine.screen.height) / 2 + 70},
+			font_size = 100,
 		)
 	case .Running:
 		break
 	case .Paused:
-		font_size :: 100
-		text: cstring = "Press SPACE to continue"
-		text_width := rl.MeasureTextEx(g.font, text, font_size, UI_FONT_SPACING).x
-		rl.DrawTextEx(
+		ui.draw_text_with_background(
 			g.font,
-			text,
-			{(f32(engine.screen.width) - text_width) / 2, (f32(engine.screen.height) / 2) + 70},
-			font_size,
-			UI_FONT_SPACING,
-			rl.GRAY,
+			"Press SPACE to continue",
+			{f32(engine.screen.width) / 2, f32(engine.screen.height) / 2 + 70},
+			font_size = 100,
 		)
 	case .GameOver:
-		font_size :: 150
-		text: cstring = "GAME OVER"
-		text_width := rl.MeasureTextEx(g.font, text, font_size, UI_FONT_SPACING).x
-		rl.DrawTextEx(
+		ui.draw_text_with_background(
 			g.font,
-			text,
-			{(f32(engine.screen.width) - text_width) / 2, (f32(engine.screen.height) / 2)},
-			font_size,
-			UI_FONT_SPACING,
-			rl.GRAY,
+			"GAME OVER",
+			{f32(engine.screen.width) / 2, f32(engine.screen.height) / 2},
+			font_size = 150,
 		)
 	}
 }
