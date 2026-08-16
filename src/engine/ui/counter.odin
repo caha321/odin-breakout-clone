@@ -37,6 +37,7 @@ Counter_Effect :: union {
 }
 
 Counter :: struct {
+	name:                  cstring,
 	value:                 i32, // DO NOT SET MANUALLY. Current value of the counter
 	base_color:            rl.Color,
 	font:                  ^rl.Font,
@@ -51,6 +52,7 @@ Counter :: struct {
 }
 
 Counter_Create :: proc "contextless" (
+	name: cstring,
 	base_color: rl.Color,
 	font: ^rl.Font,
 	font_size: f32,
@@ -59,6 +61,7 @@ Counter_Create :: proc "contextless" (
 	change_granularity: i32 = 1,
 ) -> Counter {
 	counter := Counter {
+		name               = name,
 		base_color         = base_color,
 		font               = font,
 		font_size          = font_size,
@@ -159,7 +162,16 @@ Counter_DrawText :: proc(
 	shake_offset: rl.Vector2,
 	align: Text_Align,
 ) {
+	draw_text_with_shadow(
+		self.font^,
+		self.name,
+		pos,
+		self.font_size,
+		self.base_color,
+		align = align,
+	)
 	draw_pos: [2]f32 = pos + shake_offset
+	draw_pos.y += font_size
 	draw_text_with_shadow(self.font^, text, draw_pos, font_size, color, align = align)
 }
 

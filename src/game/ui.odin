@@ -21,6 +21,7 @@ UI :: struct {
 
 UI_Init :: proc(self: ^UI) {
 	self.score_counter = ui.Counter_Create(
+		"SCORE",
 		UI_FONT_COLOR,
 		&g.font,
 		UI_FONT_SIZE,
@@ -29,6 +30,7 @@ UI_Init :: proc(self: ^UI) {
 	)
 
 	self.combo_counter = ui.Counter_Create(
+		"COMBO",
 		UI_FONT_COLOR,
 		&g.font,
 		UI_FONT_SIZE,
@@ -40,6 +42,7 @@ UI_Init :: proc(self: ^UI) {
 	)
 
 	self.time_counter = ui.Counter_Create(
+		"TIME",
 		UI_FONT_COLOR,
 		&g.font,
 		UI_FONT_SIZE,
@@ -48,6 +51,7 @@ UI_Init :: proc(self: ^UI) {
 	)
 
 	self.ball_counter = ui.Counter_Create(
+		"#BALLS",
 		UI_FONT_COLOR,
 		&g.font,
 		UI_FONT_SIZE,
@@ -59,6 +63,7 @@ UI_Init :: proc(self: ^UI) {
 	)
 
 	self.block_counter = ui.Counter_Create(
+		"#BLOCKS",
 		UI_FONT_COLOR,
 		&g.font,
 		UI_FONT_SIZE,
@@ -81,10 +86,11 @@ UI_Draw :: proc(self: ^UI) {
 	BORDER_WIDTH: f32 = ((ARENA_HALF_WIDTH + WALL_HALF_THICKNESS * 2) * engine.camera.zoom / 2)
 	BORDER_COLOR :: rl.Color{0, 0, 0, 192}
 
-	UI_TEXT_Y :: 10
-	UI_TEXT_X_BORDER_LEFT :: 10
+	UI_TEXT_Y :: 5
+	UI_TEXT_X_START := BORDER_WIDTH + (WALL_HALF_THICKNESS * 2 * engine.camera.zoom) + 50 // TODO
 	UI_TEXT_X_BORDER_RIGHT := BORDER_WIDTH + (ARENA_HALF_WIDTH * 2 * engine.camera.zoom)
-	UI_TEXT_X_OFFSET := BORDER_WIDTH - 30
+	//UI_TEXT_X_OFFSET := BORDER_WIDTH
+	UI_COUNTER_OFFSET :: 200
 
 	// borders
 	rl.DrawRectangle(0, 0, i32(BORDER_WIDTH), engine.screen.height, BORDER_COLOR) // Left
@@ -99,84 +105,20 @@ UI_Draw :: proc(self: ^UI) {
 	) // Right
 
 
-	text_y: f32 = UI_TEXT_Y
-	rl.DrawTextEx(
-		g.font,
-		"SCORE",
-		{UI_TEXT_X_BORDER_LEFT, text_y},
-		UI_FONT_SIZE,
-		UI_FONT_SPACING,
-		UI_FONT_COLOR,
-	)
-	ui.Counter_Draw(
-		&self.score_counter,
-		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
-		"%5d",
-		.Right,
-	)
+	text_x: f32 = UI_TEXT_X_START
+	ui.Counter_Draw(&self.score_counter, {text_x, UI_TEXT_Y}, "%5d", .Center)
 
-	text_y += UI_FONT_SIZE
-	rl.DrawTextEx(
-		g.font,
-		"COMBO",
-		{UI_TEXT_X_BORDER_LEFT, text_y},
-		UI_FONT_SIZE,
-		UI_FONT_SPACING,
-		UI_FONT_COLOR,
-	)
-	ui.Counter_Draw(
-		&self.combo_counter,
-		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
-		"%dX",
-		.Right,
-	)
+	text_x += UI_COUNTER_OFFSET
+	ui.Counter_Draw(&self.combo_counter, {text_x, UI_TEXT_Y}, "%dX", .Center)
 
-	text_y += UI_FONT_SIZE
-	rl.DrawTextEx(
-		g.font,
-		"BALLS",
-		{UI_TEXT_X_BORDER_LEFT, text_y},
-		UI_FONT_SIZE,
-		UI_FONT_SPACING,
-		UI_FONT_COLOR,
-	)
-	ui.Counter_Draw(
-		&self.ball_counter,
-		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
-		"%2d",
-		.Right,
-	)
+	text_x += UI_COUNTER_OFFSET
+	ui.Counter_Draw(&self.ball_counter, {text_x, UI_TEXT_Y}, "%2d", .Center)
 
-	text_y += UI_FONT_SIZE
-	rl.DrawTextEx(
-		g.font,
-		"BLOCKS",
-		{UI_TEXT_X_BORDER_LEFT, text_y},
-		UI_FONT_SIZE,
-		UI_FONT_SPACING,
-		UI_FONT_COLOR,
-	)
-	ui.Counter_Draw(
-		&self.block_counter,
-		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
-		"%2d",
-		.Right,
-	)
+	text_x += UI_COUNTER_OFFSET
+	ui.Counter_Draw(&self.block_counter, {text_x, UI_TEXT_Y}, "%2d", .Center)
 
-	text_y += UI_FONT_SIZE
-	rl.DrawTextEx(
-		g.font,
-		"TIME",
-		{UI_TEXT_X_BORDER_LEFT, text_y},
-		UI_FONT_SIZE,
-		UI_FONT_SPACING,
-		UI_FONT_COLOR,
-	)
-	ui.Counter_DrawTime(
-		&self.time_counter,
-		{UI_TEXT_X_BORDER_LEFT + UI_TEXT_X_OFFSET, text_y},
-		.Right,
-	)
+	text_x += UI_COUNTER_OFFSET
+	ui.Counter_DrawTime(&self.time_counter, {text_x, UI_TEXT_Y}, .Center)
 
 
 	rl.DrawTextEx(
