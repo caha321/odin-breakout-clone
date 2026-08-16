@@ -118,11 +118,6 @@ Counter_Update :: proc "contextless" (self: ^Counter, new_value: i32, dt: f32) {
 	}
 }
 
-Text_Align :: enum {
-	Left,
-	Center,
-	Right,
-}
 
 @(private = "file")
 Counter_ComputeDrawState :: proc(
@@ -165,18 +160,7 @@ Counter_DrawText :: proc(
 	align: Text_Align,
 ) {
 	draw_pos: [2]f32 = pos + shake_offset
-
-	assert(self.font != nil)
-
-	switch align {
-	case .Left:
-		break
-	case .Center:
-		draw_pos.x -= rl.MeasureTextEx(self.font^, text, font_size, FONT_SPACING).x / 2
-	case .Right:
-		draw_pos.x -= rl.MeasureTextEx(self.font^, text, font_size, FONT_SPACING).x
-	}
-	rl.DrawTextEx(self.font^, text, draw_pos, font_size, FONT_SPACING, color)
+	draw_text_with_shadow(self.font^, text, draw_pos, font_size, color, align = align)
 }
 
 Counter_Draw :: proc(self: ^Counter, pos: [2]f32, format: string, align: Text_Align = .Left) {

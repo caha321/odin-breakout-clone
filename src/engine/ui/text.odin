@@ -2,8 +2,49 @@ package ui
 
 import rl "vendor:raylib"
 
+Text_Align :: enum {
+	Left,
+	Center,
+	Right,
+}
+
 DEFAULT_BG_COLOR :: rl.Color{64, 64, 64, 128}
 
+draw_text_aligned :: proc "contextless" (
+	font: rl.Font,
+	text: cstring,
+	pos: [2]f32,
+	font_size: f32,
+	color: rl.Color,
+	align: Text_Align,
+) {
+	draw_pos := pos
+
+	switch align {
+	case .Left:
+		break
+	case .Center:
+		draw_pos.x -= rl.MeasureTextEx(font, text, font_size, FONT_SPACING).x / 2
+	case .Right:
+		draw_pos.x -= rl.MeasureTextEx(font, text, font_size, FONT_SPACING).x
+	}
+
+	rl.DrawTextEx(font, text, draw_pos, font_size, FONT_SPACING, color)
+}
+
+draw_text_with_shadow :: proc "contextless" (
+	font: rl.Font,
+	text: cstring,
+	pos: [2]f32,
+	font_size: f32,
+	color: rl.Color,
+	shadow_color: rl.Color = {0, 0, 0, 180},
+	shadow_offset: [2]f32 = {4, 4},
+	align: Text_Align = .Left,
+) {
+	draw_text_aligned(font, text, pos + shadow_offset, font_size, shadow_color, align)
+	draw_text_aligned(font, text, pos, font_size, color, align)
+}
 
 draw_text_with_background :: proc "contextless" (
 	font: rl.Font,
