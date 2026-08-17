@@ -161,15 +161,9 @@ generate_fractures :: proc(
 	hw, hh := half_extents.x, half_extents.y
 	boundary := []b2.Vec2{{-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}}
 
-	atlas_region := cast(rl.Rectangle)atlas_region
-	uv_min := b2.Vec2 {
-		atlas_region.x / f32(g_atlas_texture.width),
-		atlas_region.y / f32(g_atlas_texture.height),
-	}
-	uv_size := b2.Vec2 {
-		atlas_region.width / f32(g_atlas_texture.width),
-		atlas_region.height / f32(g_atlas_texture.height),
-	}
+	uv := atlas_region_to_uv(atlas_region)
+	uv_min := [2]f32{uv.x, uv.y}
+	uv_size := [2]f32{uv.width, uv.height}
 
 	fragments := make([dynamic]Fragment_Shape, 0, len(seeds))
 

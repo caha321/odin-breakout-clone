@@ -5,6 +5,16 @@ import "core:log"
 import rl "vendor:raylib"
 
 AtlasRegion :: distinct rl.Rectangle
+AtlasUV :: distinct rl.Rectangle
+
+atlas_region_to_uv :: proc "contextless" (region: AtlasRegion) -> AtlasUV {
+	return AtlasUV {
+		x = region.x / f32(g_atlas_texture.width),
+		y = region.y / f32(g_atlas_texture.height),
+		width = region.width / f32(g_atlas_texture.width),
+		height = region.height / f32(g_atlas_texture.height),
+	}
+}
 
 // simple shelf packed atlas
 @(private = "file")
