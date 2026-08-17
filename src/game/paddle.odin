@@ -56,7 +56,7 @@ Paddle_Create :: proc() {
 			body_id = body_id,
 			variant = variant,
 			render_data = {
-				texture = g.textures[.PaddleBlue],
+				atlas_region = g.textures[.PaddleBlue],
 				shape = engine.RenderShape_Rectangle {
 					width = paddle_half_width(variant.size) * 2,
 					height = PADDLE_HALF_HEIGHT * 2,

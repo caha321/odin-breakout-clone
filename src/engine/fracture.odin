@@ -121,13 +121,15 @@ clip_halfplane :: proc(poly: []b2.Vec2, keep_site, other_site: b2.Vec2) -> [dyna
 	return out
 }
 
-// Maps a point in block-local space (origin at block center) to normalized [0,1] texture coordinates
+// Maps a point in block-local space (origin at block center) to normalized [0,1]
+// texture coordinates, then remaps into the sprite's sub-rectangle within the atlas.
 @(private = "file")
-uv_of :: proc "contextless" (p: b2.Vec2, half_extents: b2.Vec2) -> b2.Vec2 {
-	return b2.Vec2 {
+uv_of :: proc "contextless" (p, half_extents, uv_min, uv_size: [2]f32) -> [2]f32 {
+	local := b2.Vec2 {
 		(p.x + half_extents.x) / (2 * half_extents.x),
 		1.0 - (p.y + half_extents.y) / (2 * half_extents.y), // flip if it renders upside down
 	}
+	return uv_min + local * uv_size
 }
 
 // Builds one Voronoi fracture pattern for a rectangular block of the given `half_extents`.
@@ -139,6 +141,7 @@ generate_fractures :: proc(
 	seed_count: int,
 	impact_world: b2.Vec2,
 	body_id: b2.BodyId,
+	atlas_region: AtlasRegion,
 ) -> [dynamic]Fragment_Shape {
 	transform := b2.Body_GetTransform(body_id)
 	impact_local := b2.InvTransformPoint(transform, impact_world)
@@ -157,6 +160,16 @@ generate_fractures :: proc(
 
 	hw, hh := half_extents.x, half_extents.y
 	boundary := []b2.Vec2{{-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}}
+
+	atlas_region := cast(rl.Rectangle)atlas_region
+	uv_min := b2.Vec2 {
+		atlas_region.x / f32(g_atlas_texture.width),
+		atlas_region.y / f32(g_atlas_texture.height),
+	}
+	uv_size := b2.Vec2 {
+		atlas_region.width / f32(g_atlas_texture.width),
+		atlas_region.height / f32(g_atlas_texture.height),
+	}
 
 	fragments := make([dynamic]Fragment_Shape, 0, len(seeds))
 
@@ -190,7 +203,7 @@ generate_fractures :: proc(
 		uvs := make([]b2.Vec2, len(cell))
 		for v, k in cell {
 			verts[k] = v - centroid
-			uvs[k] = uv_of(v, half_extents)
+			uvs[k] = uv_of(v, half_extents, uv_min, uv_size)
 		}
 		delete(cell)
 

@@ -46,7 +46,7 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 		{
 			body_id = body_id,
 			render_data = {
-				texture = g.textures[block_kind_to_texture[kind]],
+				atlas_region = g.textures[block_kind_to_texture[kind]],
 				shape = engine.RenderShape_Rectangle {
 					width = BLOCK_HALF_WIDTH * 2,
 					height = BLOCK_HALF_HEIGHT * 2,
@@ -115,6 +115,7 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		seed_count,
 		hit.point,
 		entity.body_id,
+		atlas_region = g.textures[block_kind_to_texture[variant.kind]],
 	)
 	defer delete(fragments)
 
@@ -146,9 +147,9 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 			{
 				body_id = frag_body,
 				render_data = {
-					texture = g.textures[block_kind_to_texture[variant.kind]],
-					tint    = {255, 255, 255, 64}, // TODO alpha via options,
-					shape   = engine.create_fracture_mesh(frag.vertices, frag.uvs),
+					atlas_region = g.textures[block_kind_to_texture[variant.kind]],
+					tint         = {255, 255, 255, 64}, // TODO alpha via options,
+					shape        = engine.create_fracture_mesh(frag.vertices, frag.uvs),
 				},
 				variant = Fragment{},
 			},

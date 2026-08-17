@@ -45,6 +45,11 @@ Music :: enum {
 }
 
 load_assets :: proc() -> bool {
+	// font is required by powerup texture generation
+	g.font = rl.LoadFontEx("assets/DepartureMono-Regular.otf", 128, nil, 0)
+	if !rl.IsFontValid(g.font) do return false
+
+	// textures
 	g.textures[.BallGrey] = engine.load_texture("ballGrey.png") or_return
 	g.textures[.BallBlue] = engine.load_texture("ballBlue.png") or_return
 	g.textures[.PaddleBlue] = engine.load_texture("paddleBlu.png") or_return
@@ -60,11 +65,11 @@ load_assets :: proc() -> bool {
 
 	g.textures[.ParticleCircle5] = engine.load_texture("particles/circle_05.png") or_return
 
-	g.font = rl.LoadFontEx("assets/DepartureMono-Regular.otf", 128, nil, 0)
-	if !rl.IsFontValid(g.font) do return false
+	create_powerup_textures() or_return
 
-	create_powerup_textures()
+	engine.build_atlas() or_return
 
+	// sounds
 	g.sounds[.HitBlock] = engine.load_sound("impactTin_medium_001.ogg") or_return
 	g.sounds[.HitPaddle] = engine.load_sound("impactPlate_medium_000.ogg") or_return
 	g.sounds[.HitWall] = engine.load_sound("impactMetal_medium_004.ogg") or_return
@@ -73,6 +78,7 @@ load_assets :: proc() -> bool {
 	g.sounds[.BallLost] = engine.load_sound("lowDown.ogg") or_return
 	g.sounds[.PowerupCollected] = engine.load_sound("powerUp2.ogg") or_return
 
+	// music
 	g.music[.Game] = engine.load_music("397 [Misc Extras] bgm_space_upbeat_F.ogg") or_return
 
 	return true

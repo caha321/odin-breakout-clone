@@ -24,7 +24,7 @@ Game :: struct {
 	config:                 Config,
 	player:                 Player,
 	ui:                     UI,
-	textures:               [Texture]rl.Texture2D,
+	textures:               [Texture]engine.AtlasRegion,
 	sounds:                 [Sound]rl.Sound,
 	music:                  [Music]rl.Music,
 	font:                   rl.Font,
@@ -55,6 +55,7 @@ game_init :: proc() -> bool {
 	g.entity_pool.on_remove = Entity_Destroy
 	g.entity_pool_background.on_remove = Entity_Destroy
 	g.particle_system = engine.ParticleSystem_Init(capacity = 200)
+	engine.init_atlas()
 
 	load_assets() or_return
 	UI_Init(&g.ui)
@@ -112,13 +113,14 @@ game_shutdown :: proc() {
 	engine.Pool_Delete(g.entity_pool)
 	engine.Pool_Delete(g.entity_pool_background)
 	engine.ParticleSystem_Destroy(g.particle_system)
+	engine.destory_atlas()
 
-	for rl_texture, texture in g.textures {
-		if rl.IsTextureValid(rl_texture) {
-			log.info("Unloading Texture:", texture)
-			rl.UnloadTexture(rl_texture)
-		}
-	}
+	// for rl_texture, texture in g.textures {
+	// 	if rl.IsTextureValid(rl_texture) {
+	// 		log.info("Unloading Texture:", texture)
+	// 		rl.UnloadTexture(rl_texture)
+	// 	}
+	// }
 
 	for rl_sound, sound in g.sounds {
 		if rl.IsSoundValid(rl_sound) {
@@ -308,38 +310,12 @@ check_sensor_events :: proc() {
 @(private = "file")
 debug_draw := engine.init_debug_draw()
 
-@(private = "file")
-draw_background :: proc(texture: rl.Texture2D) {
-	sw := f32(rl.GetScreenWidth())
-	sh := f32(rl.GetScreenHeight())
-	tw := f32(texture.width)
-	th := f32(texture.height)
-
-	// scale so the texture covers the whole screen, cropping the overflow
-	scale := max(sw / tw, sh / th)
-
-	dest_w := tw * scale
-	dest_h := th * scale
-
-	// center it
-	dest := rl.Rectangle {
-		x      = (sw - dest_w) * 0.5,
-		y      = (sh - dest_h) * 0.5,
-		width  = dest_w,
-		height = dest_h,
-	}
-
-	src := rl.Rectangle{0, 0, tw, th}
-
-	rl.DrawTexturePro(texture, src, dest, rl.Vector2{0, 0}, 0, rl.WHITE)
-}
-
 Game_Render :: proc() {
 	render_start := time.tick_now()
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
 
-	draw_background(g.textures[.Background])
+	engine.draw_background(g.textures[.Background])
 
 	rl.BeginMode2D(engine.camera)
 

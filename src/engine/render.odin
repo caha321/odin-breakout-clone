@@ -114,10 +114,10 @@ RenderShape :: union {
 }
 
 RenderData :: struct {
-	texture: rl.Texture2D,
-	shape:   RenderShape,
-	tint:    rl.Color,
-	blend:   rl.BlendMode,
+	atlas_region: AtlasRegion,
+	shape:        RenderShape,
+	tint:         rl.Color,
+	blend:        rl.BlendMode,
 }
 
 RenderData_Destroy :: proc(rd: RenderData) {
@@ -151,7 +151,7 @@ render_texture_circle :: proc "contextless" (
 	shape: RenderShape_Circle,
 	rt: RenderTransform,
 ) {
-	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
+	//source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
 	dest := rl.Rectangle {
 		rt.screen_position.x,
 		rt.screen_position.y,
@@ -161,7 +161,14 @@ render_texture_circle :: proc "contextless" (
 	origin := rl.Vector2{shape.diameter / 2, shape.diameter / 2} // center pivot
 
 	rl.BeginBlendMode(rd.blend) // TODO
-	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
+	rl.DrawTexturePro(
+		g_atlas_texture,
+		cast(rl.Rectangle)rd.atlas_region,
+		dest,
+		origin,
+		-rt.angle_deg,
+		rd.tint,
+	)
 	rl.EndBlendMode()
 }
 
@@ -170,11 +177,18 @@ render_texture_rectangle :: proc "contextless" (
 	shape: RenderShape_Rectangle,
 	rt: RenderTransform,
 ) {
-	source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
+	//source := rl.Rectangle{0, 0, f32(rd.texture.width), f32(rd.texture.height)}
 	dest, origin := rectangle_get_dest_origin(shape, rt)
 
 	rl.BeginBlendMode(rd.blend) // TODO
-	rl.DrawTexturePro(rd.texture, source, dest, origin, -rt.angle_deg, rd.tint)
+	rl.DrawTexturePro(
+		g_atlas_texture,
+		cast(rl.Rectangle)rd.atlas_region,
+		dest,
+		origin,
+		-rt.angle_deg,
+		rd.tint,
+	)
 	rl.EndBlendMode()
 }
 
@@ -203,7 +217,7 @@ render_texture_polygon :: proc "contextless" (
 	rlgl.Begin(rlgl.TRIANGLES)
 	defer rlgl.End()
 
-	rlgl.SetTexture(rd.texture.id)
+	rlgl.SetTexture(g_atlas_texture.id)
 	defer rlgl.SetTexture(0)
 
 	v0 := shape.vertices[0]
@@ -260,7 +274,7 @@ render_transform_to_matrix :: #force_inline proc "contextless" (rt: RenderTransf
 
 render_mesh :: proc "contextless" (rd: RenderData, shape: RenderShape_Mesh, rt: RenderTransform) {
 	material := rl.LoadMaterialDefault()
-	material.maps[rl.MaterialMapIndex.ALBEDO].texture = rd.texture
+	material.maps[rl.MaterialMapIndex.ALBEDO].texture = g_atlas_texture
 	material.maps[rl.MaterialMapIndex.ALBEDO].color = rd.tint
 
 	transform := render_transform_to_matrix(rt)
@@ -270,14 +284,14 @@ render_mesh :: proc "contextless" (rd: RenderData, shape: RenderShape_Mesh, rt: 
 render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	switch shape in rd.shape {
 	case RenderShape_Circle:
-		if rl.IsTextureValid(rd.texture) {
+		if rd.atlas_region.width > 0 {
 			render_texture_circle(rd, shape, rt)
 		} else {
 			rl.DrawCircleV(rt.screen_position, shape.diameter / 2, rd.tint)
 		}
 
 	case RenderShape_Rectangle:
-		if rl.IsTextureValid(rd.texture) {
+		if rd.atlas_region.width > 0 {
 			render_texture_rectangle(rd, shape, rt)
 		} else {
 			dest, origin := rectangle_get_dest_origin(shape, rt)
@@ -285,7 +299,7 @@ render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 		}
 
 	case RenderShape_Polygon:
-		if rl.IsTextureValid(rd.texture) {
+		if rd.atlas_region.width > 0 {
 			render_texture_polygon(rd, shape, rt)
 		} else {
 			render_polygon(rd, shape, rt)
@@ -293,4 +307,35 @@ render :: proc "contextless" (rd: RenderData, rt: RenderTransform) {
 	case RenderShape_Mesh:
 		render_mesh(rd, shape, rt) // TODO
 	}
+}
+
+
+draw_background :: proc(atlas_region: AtlasRegion) {
+	sw := f32(rl.GetScreenWidth())
+	sh := f32(rl.GetScreenHeight())
+	tw := f32(atlas_region.width)
+	th := f32(atlas_region.height)
+
+	// scale so the texture covers the whole screen, cropping the overflow
+	scale := max(sw / tw, sh / th)
+
+	dest_w := tw * scale
+	dest_h := th * scale
+
+	// center it
+	dest := rl.Rectangle {
+		x      = (sw - dest_w) * 0.5,
+		y      = (sh - dest_h) * 0.5,
+		width  = dest_w,
+		height = dest_h,
+	}
+
+	rl.DrawTexturePro(
+		g_atlas_texture,
+		cast(rl.Rectangle)atlas_region,
+		dest,
+		rl.Vector2{0, 0},
+		0,
+		rl.WHITE,
+	)
 }

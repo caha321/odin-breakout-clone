@@ -1,5 +1,6 @@
 package game
 
+import "core:log"
 import "core:math/rand"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
@@ -61,7 +62,7 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 		{
 			body_id = body_id,
 			render_data = {
-				texture = g.textures[kind_to_texture[kind]],
+				atlas_region = g.textures[kind_to_texture[kind]],
 				shape = engine.RenderShape_Circle{diameter = POWERUP_RADIUS * 2},
 				tint = rl.WHITE,
 			},
@@ -102,17 +103,19 @@ kind_to_texture := [Powerup_Kind]Texture {
 	.PaddleTilt   = .PowerupPaddleTilt,
 }
 
-create_powerup_textures :: proc() {
+create_powerup_textures :: proc() -> bool {
 	font_spacing :: 1
-	font_size :: 100
-	img_size :: 128
-	circle_radius :: 64
+	font_size :: 80
+	img_size :: 64
+	circle_radius :: 32
+	ok: bool
 
 	for kind in Powerup_Kind {
 		text := kind_to_text[kind]
 		text_measure := rl.MeasureTextEx(g.font, text, font_size, font_spacing)
 
 		img := rl.GenImageColor(img_size, img_size, rl.BLANK)
+		defer rl.UnloadImage(img)
 
 		center := [2]f32{img_size / 2, img_size / 2}
 		rl.ImageDrawCircleV(&img, center, circle_radius, kind_to_color[kind])
@@ -120,7 +123,12 @@ create_powerup_textures :: proc() {
 		text_position := center - (text_measure / 2)
 		rl.ImageDrawTextEx(&img, g.font, text, text_position, font_size, font_spacing, rl.WHITE)
 
-		g.textures[kind_to_texture[kind]] = rl.LoadTextureFromImage(img)
-		rl.UnloadImage(img)
+		g.textures[kind_to_texture[kind]], ok = engine.load_texture_from_image(img)
+		if !ok {
+			log.error("Could not load powerup texture", kind)
+			return false
+		}
 	}
+
+	return true
 }

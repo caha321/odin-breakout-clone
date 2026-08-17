@@ -63,7 +63,7 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 				kind   = kind,
 			},
 			render_data = {
-				texture = g.textures[ball_kind_to_texture[kind]],
+				atlas_region = g.textures[ball_kind_to_texture[kind]],
 				shape = engine.RenderShape_Circle{diameter = BALL_RADIUS * 2},
 				tint = rl.WHITE,
 			},
@@ -161,9 +161,9 @@ Ball_Update :: proc(self: ^Entity, variant: ^Ball, dt: f32) {
 	// particle trail
 
 	render_data := engine.RenderData {
-		shape   = engine.RenderShape_Circle{},
-		texture = g.textures[.ParticleCircle5],
-		blend   = .ADDITIVE,
+		shape        = engine.RenderShape_Circle{},
+		atlas_region = g.textures[.ParticleCircle5],
+		blend        = .ADDITIVE,
 	}
 	engine.ParticleSystem_Emit(
 		&g.particle_system,
