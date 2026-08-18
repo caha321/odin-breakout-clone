@@ -4,7 +4,15 @@
         {
             "label": "Build",
             "type": "shell",
-            "command": "odin build . -debug -strict-style -out:breakout",
+            "command": "odin build . -debug -strict-style -out:breakout"
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "odin test -all-packages .",
+            "problemMatcher": [
+                "$odin"
+            ]
         }
     ]
 }
