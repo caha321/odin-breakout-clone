@@ -120,6 +120,7 @@ create_bounds :: proc(world_id: b2.WorldId) {
 World_Create :: proc(gravity: [2]f32) -> b2.WorldId {
 	world_def := b2.DefaultWorldDef()
 	world_def.gravity = gravity
+	world_def.hitEventThreshold = 10
 	world_id := b2.CreateWorld(world_def)
 	return world_id
 }

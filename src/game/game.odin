@@ -20,29 +20,28 @@ Game_State :: enum {
 }
 
 Game :: struct {
-	state:                  Game_State,
-	config:                 Config,
-	player:                 Player,
-	ui:                     UI,
-	textures:               [Texture]engine.AtlasRegion,
-	sounds:                 [Sound]rl.Sound,
-	music:                  [Music]rl.Music,
-	font:                   rl.Font,
-	entity_pool:            engine.Pool(Entity),
-	entity_pool_background: engine.Pool(Entity),
-	particle_system:        engine.ParticleSystem,
+	state:            Game_State,
+	config:           Config,
+	player:           Player,
+	ui:               UI,
+	textures:         [Texture]engine.AtlasRegion,
+	sounds:           [Sound]rl.Sound,
+	music:            [Music]rl.Music,
+	font:             rl.Font,
+	entity_pool:      engine.Pool(Entity),
+	particle_system:  engine.ParticleSystem,
 	//
-	remaining_balls:        i32,
-	remaining_blocks:       i32,
-	ball_speed:             f32,
+	remaining_balls:  i32,
+	remaining_blocks: i32,
+	ball_speed:       f32,
 	// physics stuff
-	world_id:               b2.WorldId,
-	draw_b2_debug:          bool,
-	accumulated_time:       f32,
-	tick_count:             u64, // total physics step count
+	world_id:         b2.WorldId,
+	draw_b2_debug:    bool,
+	accumulated_time: f32,
+	tick_count:       u64, // total physics step count
 	// perf stats
-	update_time_ms:         f64,
-	render_time_ms:         f64,
+	update_time_ms:   f64,
+	render_time_ms:   f64,
 }
 
 g: ^Game
@@ -53,7 +52,6 @@ game_init :: proc() -> bool {
 
 	g = new(Game)
 	g.entity_pool.on_remove = Entity_Destroy
-	g.entity_pool_background.on_remove = Entity_Destroy
 	g.particle_system = engine.ParticleSystem_Init(capacity = 200)
 	engine.init_atlas()
 
@@ -102,7 +100,6 @@ game_restart :: proc() {
 
 game_clear_entities :: proc() {
 	engine.Pool_Clear(&g.entity_pool)
-	engine.Pool_Clear(&g.entity_pool_background)
 	engine.ParticleSystem_Clear(&g.particle_system)
 
 	if b2.World_IsValid(g.world_id) do b2.DestroyWorld(g.world_id)
@@ -111,7 +108,6 @@ game_clear_entities :: proc() {
 game_shutdown :: proc() {
 	game_clear_entities()
 	engine.Pool_Delete(g.entity_pool)
-	engine.Pool_Delete(g.entity_pool_background)
 	engine.ParticleSystem_Destroy(g.particle_system)
 	engine.destory_atlas()
 
@@ -319,15 +315,9 @@ Game_Render :: proc() {
 
 	rl.BeginMode2D(engine.camera)
 
-	// draw background entities first
-	for &slot in g.entity_pool_background.slots {
-		if !engine.slot_valid(slot.generation) do continue
-		Entity_Draw(&slot.value)
-	}
-
 	engine.ParticleSystem_Draw(&g.particle_system)
 
-	for &slot in g.entity_pool.slots {
+	#reverse for &slot in g.entity_pool.slots {
 		if !engine.slot_valid(slot.generation) do continue
 		Entity_Draw(&slot.value)
 	}
@@ -346,21 +336,14 @@ Game_Render :: proc() {
 
 Game_AddEntity :: proc(entity: Entity) {
 	assert(b2.IsValid(entity.body_id))
-	pool := &g.entity_pool
 
 	#partial switch v in entity.variant {
-	case Fragment:
-		pool = &g.entity_pool_background
 	case Ball:
 		g.remaining_balls += 1
 	case Block:
 		g.remaining_blocks += 1
 	}
 
-	engine.Pool_Add(pool, entity)
-	log.debugf(
-		"Added entity to pool",
-		entity.body_id,
-		pool == &g.entity_pool_background ? "background" : "main",
-	)
+	engine.Pool_Add(&g.entity_pool, entity)
+	log.debug("Added entity to pool", entity.body_id)
 }

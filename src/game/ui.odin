@@ -124,13 +124,12 @@ UI_Draw :: proc(self: ^UI) {
 	rl.DrawTextEx(
 		g.font,
 		fmt.ctprintf(
-			"FPS: %d\nFrame: %d\n\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\n#Ent. Backg.: %d\n\nCombo Time Left: %.1f",
+			"FPS: %d\nFrame: %d\n\nUpdate: %.4f ms\nRender: %.4f ms\n\n#Entities: %d\n\nCombo Time Left: %.1f",
 			rl.GetFPS(),
 			g.tick_count,
 			g.update_time_ms,
 			g.render_time_ms,
 			len(g.entity_pool.slots) - len(g.entity_pool.free_list),
-			len(g.entity_pool_background.slots) - len(g.entity_pool_background.free_list),
 			Player_ComboTimeRemaining(g.player),
 		),
 		{UI_TEXT_X_BORDER_RIGHT, 10},

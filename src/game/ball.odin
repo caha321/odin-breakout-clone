@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:math/rand"
@@ -36,7 +37,7 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	ball_def := b2.DefaultBodyDef()
 	ball_def.type = .dynamicBody
 	ball_def.position = world_position
-	ball_def.name = "ball"
+	ball_def.name = fmt.ctprintf("ball %d (%s)", g_body_def_name_ids.ball, kind)
 	ball_def.linearVelocity = random_ball_velocity(BALL_SPEED_INITIAL)
 	ball_def.gravityScale = 0.25 // TODO defined by level
 	body_id := b2.CreateBody(g.world_id, ball_def)
@@ -52,7 +53,7 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 	shape_def.enableSensorEvents = true // required on both sides
 	shape_def.enableHitEvents = true
 	shape_def.filter.categoryBits = u64(Category_Flags{.Ball})
-	shape_def.filter.maskBits = u64(Category_Flags{.Foreground, .Ball})
+	shape_def.filter.maskBits = u64(Category_Flags{.Foreground, .Ball, .Paddle})
 	_ = b2.CreateCircleShape(body_id, shape_def, &circle)
 
 	Game_AddEntity(
@@ -69,6 +70,7 @@ Ball_Create :: proc(world_position: [2]f32, kind: Ball_Kind = Ball_Kind.Grey) {
 			},
 		},
 	)
+	g_body_def_name_ids.ball += 1
 }
 
 random_ball_velocity :: proc(speed: f32) -> [2]f32 {

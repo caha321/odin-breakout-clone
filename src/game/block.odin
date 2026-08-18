@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:log"
 import "core:math/rand"
 import b2 "vendor:box2d"
@@ -28,7 +29,7 @@ BLOCK_HALF_HEIGHT :: 1.5
 
 Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	body_def := b2.DefaultBodyDef()
-	body_def.name = "block"
+	body_def.name = fmt.ctprintf("block %d (%s)", g_body_def_name_ids.block, kind)
 	body_def.type = .staticBody
 	body_def.position = position
 	body_id := b2.CreateBody(g.world_id, body_def)
@@ -39,7 +40,7 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 	shape_def.material.friction = 0.1
 	shape_def.material.restitution = 1.0 // bricks bounce the ball cleanly, like the paddle
 	shape_def.filter.categoryBits = u64(Category_Flags{.Foreground})
-	//shape_def.filter.maskBits = u64(Category_Flags{.Foreground})
+	shape_def.filter.maskBits = u64(Category_Flags{.Ball, .Background})
 	_ = b2.CreatePolygonShape(body_id, shape_def, &box)
 
 	Game_AddEntity(
@@ -56,6 +57,7 @@ Block_Create :: proc(position: [2]f32, kind: Block_Kind, score: i8) {
 			variant = Block{health = 1, score_hit = 1, score_destroy = score, kind = kind},
 		},
 	)
+	g_body_def_name_ids.block += 1
 }
 
 @(private = "file")
@@ -70,7 +72,7 @@ block_kind_to_texture := [Block_Kind]Texture {
 
 Block_Draw :: proc(entity: ^Entity, variant: Block) {
 	if variant.health <= 0 {
-		log.warn("Tryed to draw a dead block. skipping")
+		log.warn("Tryed to draw a dead block. skipping", entity)
 		return
 	}
 
@@ -78,18 +80,18 @@ Block_Draw :: proc(entity: ^Entity, variant: Block) {
 	engine.render(entity.render_data, rt)
 }
 
-Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
-	log.debug("Block hit", entity)
+Block_Hit :: proc(body_id: b2.BodyId, variant: ^Block, hit: b2.ContactHitEvent) {
+	log.debug("Block hit", body_id)
 	play_hit_sound(.HitBlock, hit)
 	variant.health -= 1
 	score := i32(variant.score_hit)
 	g.ball_speed += 0.5
 	if variant.health <= 0 {
 		score += i32(variant.score_destroy)
-		position := b2.Body_GetPosition(entity.body_id)
+		position := b2.Body_GetPosition(body_id)
 		position.y -= 5
-		Block_Break(entity, variant, hit)
-		engine.Pool_Remove(&g.entity_pool, entity.body_id)
+		Block_Break(body_id, variant.kind, hit)
+		engine.Pool_Remove(&g.entity_pool, body_id)
 
 		if rand.float32() < POWERUP_DROP_CHANCE {
 			Powerup_Create(position)
@@ -101,12 +103,8 @@ Block_Hit :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 }
 
 // break the block into voronoi fragments in the background
-Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
-	if int(variant.kind) > 6 {
-		log.error("Cannot fragment invalid block variant", variant)
-		return
-	}
-
+@(private = "file")
+Block_Break :: proc(body_id: b2.BodyId, kind: Block_Kind, hit: b2.ContactHitEvent) {
 	seed_count := rand.int_range(7, 15) // TODO vary with hit.approachSpeed ?
 	log.debugf("Breaking block into %d fragments...", seed_count)
 
@@ -114,17 +112,18 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		{BLOCK_HALF_WIDTH, BLOCK_HALF_HEIGHT},
 		seed_count,
 		hit.point,
-		entity.body_id,
-		atlas_region = g.textures[block_kind_to_texture[variant.kind]],
+		body_id,
+		atlas_region = g.textures[block_kind_to_texture[kind]],
 	)
 	defer delete(fragments)
 
-	transform := b2.Body_GetTransform(entity.body_id)
+	transform := b2.Body_GetTransform(body_id)
 
 	for frag in fragments {
 		world_centroid := transform.p + b2.RotateVector(transform.q, frag.centroid)
 
 		body_def := b2.DefaultBodyDef()
+		body_def.name = fmt.ctprintf("fragment %d", g_body_def_name_ids.fragment)
 		body_def.type = .dynamicBody
 		body_def.position = world_centroid
 		body_def.rotation = transform.q
@@ -138,22 +137,23 @@ Block_Break :: proc(entity: ^Entity, variant: ^Block, hit: b2.ContactHitEvent) {
 		shape_def.material.friction = 0.3
 		shape_def.material.restitution = 0.1
 		shape_def.filter.categoryBits = u64(Category_Flags{.Background})
+		shape_def.filter.maskBits = u64(Category_Flags{.Background, .Foreground, .Paddle}) // TODO toggle paddle collsion via option
 		_ = b2.CreatePolygonShape(frag_body, shape_def, &poly)
 
-		//dir := linalg.normalize(frag.centroid)
 		b2.Body_ApplyLinearImpulseToCenter(frag_body, -hit.normal * (hit.approachSpeed / 3), true)
 
 		Game_AddEntity(
 			{
 				body_id = frag_body,
 				render_data = {
-					atlas_region = g.textures[block_kind_to_texture[variant.kind]],
-					tint         = {255, 255, 255, 64}, // TODO alpha via options,
-					shape        = engine.create_fracture_mesh(frag.vertices, frag.uvs),
+					tint  = {255, 255, 255, 64}, // TODO alpha via options,
+					shape = engine.create_fracture_mesh(frag.vertices, frag.uvs),
 				},
 				variant = Fragment{},
 			},
 		)
+		g_body_def_name_ids.fragment += 1
+
 		delete(frag.vertices)
 		delete(frag.uvs)
 	}

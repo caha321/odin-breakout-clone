@@ -26,6 +26,7 @@ Entity :: struct {
 // box2d filter category
 Category_Flag :: enum u64 {
 	Ball,
+	Paddle,
 	Foreground,
 	Background,
 }
@@ -73,9 +74,9 @@ Entity_Hit :: proc(entity, other: ^Entity, hit: b2.ContactHitEvent) {
 	case Block:
 		ball, ok := other.variant.(Ball)
 		if ok {
-			Block_Hit(entity, &v, hit)
+			Block_Hit(entity.body_id, &v, hit)
 		} else {
-			log.warn("Block hit by something else:", typeid_of(type_of(other.variant)))
+			log.warn("Block hit by something else:", other.variant)
 		}
 	case Paddle:
 		Paddle_Hit(entity, hit)
@@ -97,3 +98,13 @@ Entity_Destroy :: proc(entity: ^Entity) {
 	}
 	engine.RenderData_Destroy(entity.render_data)
 }
+
+// Keep track of IDs to generate unique names
+BodyDefNameIDs :: struct {
+	block:    u32,
+	ball:     u32,
+	fragment: u32,
+	powerup:  u32,
+}
+
+g_body_def_name_ids := BodyDefNameIDs{}

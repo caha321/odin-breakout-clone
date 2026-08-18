@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:log"
 import "core:math/rand"
 import b2 "vendor:box2d"
@@ -38,8 +39,11 @@ POWERUP_DROP_CHANCE :: .5 // TODO too high, just for testing
 
 // Spawn a new powerup at given position. Kind is random by default.
 Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
+	kind := kind
+	if kind == .Invalid do kind = rand.choice(POWERUP_KINDS)
+
 	body_def := b2.DefaultBodyDef()
-	body_def.name = "powerup"
+	body_def.name = fmt.ctprintf("powerup %d (%s)", g_body_def_name_ids.powerup, kind)
 	body_def.type = .kinematicBody
 	body_def.position = position
 	body_def.linearVelocity = {
@@ -56,8 +60,6 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 	shape_def.isSensor = true
 	_ = b2.CreateCircleShape(body_id, shape_def, &circle)
 
-	kind := kind
-	if kind == .Invalid do kind = rand.choice(POWERUP_KINDS)
 	Game_AddEntity(
 		{
 			body_id = body_id,
@@ -69,6 +71,7 @@ Powerup_Create :: proc(position: [2]f32, kind: Powerup_Kind = .Invalid) {
 			variant = Powerup{kind = kind},
 		},
 	)
+	g_body_def_name_ids.powerup += 1
 }
 
 
